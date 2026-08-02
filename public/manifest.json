@@ -1,0 +1,9 @@
+{
+  "name": "Mirror José",
+  "short_name": "Mirror",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050709",
+  "theme_color": "#050709",
+  "icons": []
+}
