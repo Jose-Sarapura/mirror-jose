@@ -27,11 +27,11 @@ export const MIRROR_DEFAULTS = {
       name: 'VanEck Semiconductor ETF',
       shortName: 'Semiconductores',
       currency: 'USD',
-      shares: 2.23582414,
-      averageCost: 621.10,
+      shares: 2.60217227,
+      averageCost: 610.52,
       dividends: 0,
       targetWeight: 20,
-      fallbackPrice: 560.00,
+      fallbackPrice: 540.53,
       role: 'Acelerador',
       risk: 'Alto',
       thesis: 'Exposición concentrada al ciclo global de chips, infraestructura de IA y fabricantes líderes.',
@@ -83,6 +83,7 @@ export const PURCHASES = {
   SMH: [
     { date: '2026-06-22', amount: 546.82, currency: 'USD', label: 'Compra SMH' },
     { date: '2026-07-13', amount: 213.31, currency: 'USD', label: 'Compra SMH' },
+    { date: '2026-07-31', amount: 200.00, shares: 0.36634813, price: 545.93, currency: 'USD', label: 'Compra SMH' },
   ],
   BCH: [
     { date: '2025-11-26', amount: 531.36, currency: 'USD', label: 'Compra BCH' },

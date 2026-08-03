@@ -13,13 +13,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { MIRROR_DEFAULTS, PURCHASES, RANGE_OPTIONS } from '../../lib/mirror-config';
+import { PURCHASES, RANGE_OPTIONS } from '../../lib/mirror-config';
 import { historyMetrics, mergePortfolioData } from '../lib/calculations';
+import { mergeStoredSettings, STORAGE_KEY } from '../lib/settings';
 import { clp, nativeMoney, percentage, shares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
-
-const STORAGE_KEY = 'mirror-v2-settings';
 
 export default function AssetDetail({ ticker }) {
   const [range, setRange] = useState('1y');
@@ -32,8 +31,8 @@ export default function AssetDetail({ ticker }) {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      setSettings(stored || {});
-    } catch { setSettings({}); }
+      setSettings(mergeStoredSettings(stored));
+    } catch { setSettings(mergeStoredSettings(null)); }
   }, []);
 
   useEffect(() => {
@@ -54,7 +53,11 @@ export default function AssetDetail({ ticker }) {
   const portfolio = useMemo(() => apiData ? mergePortfolioData(apiData, settings || {}) : null, [apiData, settings]);
   const asset = portfolio?.assets.find((item) => item.ticker === ticker);
   const metrics = useMemo(() => historyMetrics(history), [history]);
-  const chartData = useMemo(() => attachPurchases(history, PURCHASES[ticker] || []), [history, ticker]);
+  const chartPurchases = useMemo(() => [
+    ...(PURCHASES[ticker] || []),
+    ...((settings?.transactions || []).filter((transaction) => transaction.ticker === ticker)),
+  ], [settings, ticker]);
+  const chartData = useMemo(() => attachPurchases(history, chartPurchases), [history, chartPurchases]);
 
   if (!asset || !portfolio) {
     return <div className={styles.loadingScreen}><span className={styles.loadingMark}>M</span><strong>Cargando {ticker}</strong></div>;
@@ -201,8 +204,11 @@ function attachPurchases(points, purchases) {
       const currentDistance = Math.abs(point.timestamp - purchaseTime);
       if (currentDistance < distance) { distance = currentDistance; nearestIndex = index; }
     });
-    next[nearestIndex].purchasePrice = next[nearestIndex].price;
-    next[nearestIndex].purchaseLabel = `${purchase.label}: ${purchase.currency} ${purchase.amount.toLocaleString('es-CL')}`;
+    next[nearestIndex].purchasePrice = Number(purchase.price) || next[nearestIndex].price;
+    const purchaseLabel = `${purchase.label}: ${purchase.currency} ${purchase.amount.toLocaleString('es-CL')}`;
+    next[nearestIndex].purchaseLabel = next[nearestIndex].purchaseLabel
+      ? `${next[nearestIndex].purchaseLabel} · ${purchaseLabel}`
+      : purchaseLabel;
   });
   return next;
 }

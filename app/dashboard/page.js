@@ -9,29 +9,16 @@ import AssetCard from './components/AssetCard';
 import ContributionSimulator from './components/ContributionSimulator';
 import ProjectionChart from './components/ProjectionChart';
 import Icon from './components/Icon';
+import PurchaseRegistrar from './components/PurchaseRegistrar';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
+import { createDefaultSettings, mergeStoredSettings, STORAGE_KEY } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
 import styles from './dashboard.module.css';
-
-const STORAGE_KEY = 'mirror-v2-settings';
-
-function defaultSettings() {
-  return {
-    goalCLP: MIRROR_DEFAULTS.goalCLP,
-    monthlyContributionCLP: MIRROR_DEFAULTS.monthlyContributionCLP,
-    cashCLP: MIRROR_DEFAULTS.cashCLP,
-    assets: Object.fromEntries(Object.values(MIRROR_DEFAULTS.assets).map((asset) => [asset.ticker, {
-      shares: asset.shares,
-      averageCost: asset.averageCost,
-      targetWeight: asset.targetWeight,
-    }])),
-  };
-}
 
 export default function DashboardPage() {
   const [active, setActive] = useState('overview');
   const [apiData, setApiData] = useState(null);
-  const [settings, setSettings] = useState(defaultSettings);
+  const [settings, setSettings] = useState(createDefaultSettings);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -39,7 +26,7 @@ export default function DashboardPage() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      if (stored) setSettings((current) => ({ ...current, ...stored, assets: { ...current.assets, ...stored.assets } }));
+      if (stored) setSettings(mergeStoredSettings(stored));
     } catch {}
   }, []);
 
@@ -72,7 +59,7 @@ export default function DashboardPage() {
   };
 
   const resetSettings = () => {
-    const next = defaultSettings();
+    const next = createDefaultSettings();
     setSettings(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
@@ -289,6 +276,7 @@ export default function DashboardPage() {
               <label>Aporte mensual<input type="number" value={settings.monthlyContributionCLP} onChange={(event) => setSettings({ ...settings, monthlyContributionCLP: Number(event.target.value) })} /></label>
               <label>Caja en CLP<input type="number" value={settings.cashCLP} onChange={(event) => setSettings({ ...settings, cashCLP: Number(event.target.value) })} /></label>
             </div>
+            <PurchaseRegistrar portfolio={portfolio} settings={settings} setSettings={setSettings} />
             <div className={styles.settingsAssets}>
               <div className={styles.settingsHead}><span>Activo</span><span>Participaciones</span><span>Costo promedio</span><span>Objetivo %</span></div>
               {portfolio.assets.map((asset) => (
