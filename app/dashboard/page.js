@@ -10,6 +10,7 @@ import ContributionSimulator from './components/ContributionSimulator';
 import ProjectionChart from './components/ProjectionChart';
 import Icon from './components/Icon';
 import PurchaseRegistrar from './components/PurchaseRegistrar';
+import FormattedNumberInput from './components/FormattedNumberInput';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -303,8 +304,28 @@ export default function DashboardPage() {
               {portfolio.assets.map((asset) => (
                 <div className={styles.settingsRow} key={asset.ticker}>
                   <strong>{asset.ticker}</strong>
-                  <input type="number" step="0.00000001" value={settings.assets[asset.ticker]?.shares} onChange={(event) => setSettings({ ...settings, assets: { ...settings.assets, [asset.ticker]: { ...settings.assets[asset.ticker], shares: Number(event.target.value) } } })} />
-                  <input type="number" step="0.01" value={settings.assets[asset.ticker]?.averageCost} onChange={(event) => setSettings({ ...settings, assets: { ...settings.assets, [asset.ticker]: { ...settings.assets[asset.ticker], averageCost: Number(event.target.value) } } })} />
+                  <FormattedNumberInput
+                    value={settings.assets[asset.ticker]?.shares}
+                    decimals={8}
+                    onValueChange={(value) => setSettings({
+                      ...settings,
+                      assets: {
+                        ...settings.assets,
+                        [asset.ticker]: { ...settings.assets[asset.ticker], shares: value },
+                      },
+                    })}
+                  />
+                  <FormattedNumberInput
+                    value={settings.assets[asset.ticker]?.averageCost}
+                    decimals={2}
+                    onValueChange={(value) => setSettings({
+                      ...settings,
+                      assets: {
+                        ...settings.assets,
+                        [asset.ticker]: { ...settings.assets[asset.ticker], averageCost: value },
+                      },
+                    })}
+                  />
                   <input type="number" step="1" value={settings.assets[asset.ticker]?.targetWeight} onChange={(event) => setSettings({ ...settings, assets: { ...settings.assets, [asset.ticker]: { ...settings.assets[asset.ticker], targetWeight: Number(event.target.value) } } })} />
                 </div>
               ))}
