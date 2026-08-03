@@ -2,6 +2,7 @@ export const MIRROR_DEFAULTS = {
   goalCLP: 600000000,
   monthlyContributionCLP: 200000,
   cashCLP: 1874,
+  cashUSD: 119.84,
   horizonYear: 2030,
   assets: {
     VOO: {

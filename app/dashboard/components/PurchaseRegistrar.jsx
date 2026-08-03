@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { registerPurchase, removePurchase, STORAGE_KEY } from '../lib/settings';
-import { nativeMoney, shares as formatShares } from '../lib/format';
+import { persistSettings, registerPurchase, removePurchase } from '../lib/settings';
+import { clp, nativeMoney, shares as formatShares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
 
@@ -24,11 +24,14 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const [error, setError] = useState('');
 
   const asset = portfolio.assets.find((item) => item.ticker === ticker);
+  const wallet = portfolio.wallets[asset.currency];
   const calculatedPrice = useMemo(() => {
     const numericAmount = Number(amount);
     const numericShares = Number(purchasedShares);
     return numericAmount > 0 && numericShares > 0 ? numericAmount / numericShares : 0;
   }, [amount, purchasedShares]);
+  const remainingBalance = Math.max(0, wallet.balance - Number(amount || 0));
+  const exceedsBalance = Number(amount || 0) > wallet.balance + 0.000001;
 
   const transactions = [...(settings.transactions || [])].sort((a, b) =>
     new Date(b.date).getTime() - new Date(a.date).getTime(),
@@ -36,7 +39,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
 
   const persist = (nextSettings) => {
     setSettings(nextSettings);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSettings));
+    persistSettings(localStorage, nextSettings);
   };
 
   const handleSubmit = (event) => {
@@ -53,8 +56,9 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         currency: asset.currency,
       });
       persist(result.settings);
+      const balance = asset.currency === 'USD' ? result.settings.cashUSD : result.settings.cashCLP;
       setMessage(
-        `${ticker} actualizado: ${formatShares(result.settings.assets[ticker].shares)} participaciones · promedio ${nativeMoney(result.settings.assets[ticker].averageCost, asset.currency)}.`,
+        `${ticker} actualizado: ${formatShares(result.settings.assets[ticker].shares)} participaciones · promedio ${nativeMoney(result.settings.assets[ticker].averageCost, asset.currency)} · billetera ${nativeMoney(balance, asset.currency)}.`,
       );
       setAmount('');
       setPurchasedShares('');
@@ -66,7 +70,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const handleRemove = (transactionId) => {
     const nextSettings = removePurchase(settings, transactionId);
     persist(nextSettings);
-    setMessage('Compra eliminada y posición recalculada.');
+    setMessage('Compra eliminada, posición recalculada y saldo devuelto a la billetera.');
     setError('');
   };
 
@@ -75,16 +79,18 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
       <div className={styles.purchaseRegistrarHeader}>
         <div>
           <p className={styles.kicker}>Registro de movimientos</p>
-          <h3>Registrar una compra real</h3>
-          <span>Actualiza participaciones, costo promedio y puntos del gráfico automáticamente.</span>
+          <h3>Comprar desde la billetera</h3>
+          <span>El saldo se descuenta y el activo actualiza participaciones, costo promedio y peso automáticamente.</span>
         </div>
-        <span className={styles.autoSaveBadge}><Icon name="check" size={15} /> Guardado automático</span>
+        <span className={styles.walletBadge}>
+          <Icon name="portfolio" size={15} /> {asset.currency}: {nativeMoney(wallet.balance, asset.currency)}
+        </span>
       </div>
 
       <form className={styles.purchaseForm} onSubmit={handleSubmit}>
         <label>
           Activo
-          <select value={ticker} onChange={(event) => setTicker(event.target.value)}>
+          <select value={ticker} onChange={(event) => { setTicker(event.target.value); setMessage(''); setError(''); }}>
             {portfolio.assets.map((item) => <option key={item.ticker} value={item.ticker}>{item.ticker} · {item.name}</option>)}
           </select>
         </label>
@@ -94,18 +100,35 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         </label>
         <label>
           Monto ({asset.currency})
-          <input type="number" min="0" step="0.01" placeholder="200.00" value={amount} onChange={(event) => setAmount(event.target.value)} required />
+          <input
+            type="number"
+            min="0"
+            max={wallet.balance}
+            step={asset.currency === 'USD' ? '0.01' : '1'}
+            placeholder={asset.currency === 'USD' ? '119.84' : '150000'}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            required
+          />
         </label>
         <label>
           Participaciones compradas
-          <input type="number" min="0" step="0.00000001" placeholder="0.36634813" value={purchasedShares} onChange={(event) => setPurchasedShares(event.target.value)} required />
+          <input type="number" min="0" step="0.00000001" placeholder="0.21955002" value={purchasedShares} onChange={(event) => setPurchasedShares(event.target.value)} required />
         </label>
         <div className={styles.purchaseCalculated}>
-          <span>Precio calculado</span>
+          <span>Precio / saldo después</span>
           <strong>{calculatedPrice ? nativeMoney(calculatedPrice, asset.currency) : '—'}</strong>
+          <small className={exceedsBalance ? styles.negative : ''}>{nativeMoney(remainingBalance, asset.currency)}</small>
         </div>
-        <button type="submit" className={styles.primaryButton}><Icon name="edit" size={17} /> Registrar compra</button>
+        <button type="submit" className={styles.primaryButton} disabled={exceedsBalance || wallet.balance <= 0}>
+          <Icon name="edit" size={17} /> Registrar compra
+        </button>
       </form>
+
+      <p className={styles.walletHint}>
+        Disponible: <strong>{nativeMoney(wallet.balance, asset.currency)}</strong>
+        {asset.currency === 'USD' && <span> · equivalente {clp.format(wallet.valueCLP)}</span>}
+      </p>
 
       {message && <p className={styles.purchaseSuccess}><Icon name="check" size={15} /> {message}</p>}
       {error && <p className={styles.purchaseError}><Icon name="info" size={15} /> {error}</p>}

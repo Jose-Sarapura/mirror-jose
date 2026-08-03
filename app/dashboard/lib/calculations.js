@@ -33,13 +33,19 @@ export function mergePortfolioData(apiData, settings) {
   });
 
   const cashCLP = numberOr(settings?.cashCLP, apiData.cashCLP);
-  const totalCLP = assets.reduce((sum, asset) => sum + asset.valueCLP, 0) + cashCLP;
-  const previousTotalCLP = assets.reduce((sum, asset) => sum + asset.previousValueCLP, 0) + cashCLP;
-  const totalCostBasisCLP = assets.reduce((sum, asset) => sum + asset.costBasisCLP, 0) + cashCLP;
+  const cashUSD = numberOr(settings?.cashUSD, apiData.cashUSD);
+  const cashUSDCLP = cashUSD * fx;
+  const totalCashCLP = cashCLP + cashUSDCLP;
+  const investedCLP = assets.reduce((sum, asset) => sum + asset.valueCLP, 0);
+  const previousInvestedCLP = assets.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
+  const totalCLP = investedCLP + totalCashCLP;
+  const previousTotalCLP = previousInvestedCLP + totalCashCLP;
+  const investedCostBasisCLP = assets.reduce((sum, asset) => sum + asset.costBasisCLP, 0);
+  const totalCostBasisCLP = investedCostBasisCLP + totalCashCLP;
 
   const enrichedAssets = assets.map((asset) => {
-    const weight = totalCLP ? (asset.valueCLP / totalCLP) * 100 : 0;
-    const targetValueCLP = totalCLP * (asset.targetWeight / 100);
+    const weight = investedCLP ? (asset.valueCLP / investedCLP) * 100 : 0;
+    const targetValueCLP = investedCLP * (asset.targetWeight / 100);
     return {
       ...asset,
       weight,
@@ -54,6 +60,12 @@ export function mergePortfolioData(apiData, settings) {
     ...apiData,
     assets: enrichedAssets,
     cashCLP,
+    cashUSD,
+    cashUSDCLP,
+    totalCashCLP,
+    investedCLP,
+    previousInvestedCLP,
+    investedCostBasisCLP,
     totalCLP,
     previousTotalCLP,
     totalCostBasisCLP,
@@ -61,16 +73,20 @@ export function mergePortfolioData(apiData, settings) {
     totalReturnPct: totalCostBasisCLP ? ((totalCLP / totalCostBasisCLP) - 1) * 100 : 0,
     dayChangeCLP: totalCLP - previousTotalCLP,
     dayChangePct: previousTotalCLP ? ((totalCLP / previousTotalCLP) - 1) * 100 : 0,
+    wallets: {
+      USD: { currency: 'USD', balance: cashUSD, valueCLP: cashUSDCLP },
+      CLP: { currency: 'CLP', balance: cashCLP, valueCLP: cashCLP },
+    },
   };
 }
 
 export function contributionRecommendation(portfolio, amountCLP) {
   if (!portfolio || !amountCLP) return null;
-  const futureTotal = portfolio.totalCLP + amountCLP;
+  const futureInvested = portfolio.investedCLP + amountCLP;
 
   const ranked = portfolio.assets
     .map((asset) => {
-      const targetAfter = futureTotal * (asset.targetWeight / 100);
+      const targetAfter = futureInvested * (asset.targetWeight / 100);
       const deficit = Math.max(0, targetAfter - asset.valueCLP);
       const discountToCost = asset.averageCost ? Math.max(0, ((asset.averageCost - asset.price) / asset.averageCost) * 100) : 0;
       const score = deficit + amountCLP * Math.min(discountToCost, 25) / 100;
@@ -83,7 +99,7 @@ export function contributionRecommendation(portfolio, amountCLP) {
   const amountNative = primary.currency === 'USD' ? allocated / portfolio.fx : allocated;
   const newShares = amountNative / primary.price;
   const newAverageCost = (primary.costBasisNative + amountNative) / (primary.shares + newShares);
-  const newWeight = ((primary.valueCLP + allocated) / futureTotal) * 100;
+  const newWeight = ((primary.valueCLP + allocated) / futureInvested) * 100;
 
   return {
     ticker: primary.ticker,

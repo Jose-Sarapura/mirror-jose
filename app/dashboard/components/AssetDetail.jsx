@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { PURCHASES, RANGE_OPTIONS } from '../../lib/mirror-config';
 import { historyMetrics, mergePortfolioData } from '../lib/calculations';
-import { mergeStoredSettings, STORAGE_KEY } from '../lib/settings';
+import { readStoredSettings } from '../lib/settings';
 import { clp, nativeMoney, percentage, shares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -29,10 +29,7 @@ export default function AssetDetail({ ticker }) {
   const [settings, setSettings] = useState(null);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      setSettings(mergeStoredSettings(stored));
-    } catch { setSettings(mergeStoredSettings(null)); }
+    setSettings(readStoredSettings(localStorage));
   }, []);
 
   useEffect(() => {
@@ -66,9 +63,9 @@ export default function AssetDetail({ ticker }) {
   const amountNative = asset.currency === 'USD' ? Number(amountCLP) / portfolio.fx : Number(amountCLP);
   const addedShares = amountNative / asset.price;
   const newAverageCost = (asset.costBasisNative + amountNative) / (asset.shares + addedShares);
-  const futureTotal = portfolio.totalCLP + Number(amountCLP);
-  const newWeight = ((asset.valueCLP + Number(amountCLP)) / futureTotal) * 100;
-  const targetValue = portfolio.totalCLP * asset.targetWeight / 100;
+  const futureInvested = portfolio.investedCLP + Number(amountCLP);
+  const newWeight = ((asset.valueCLP + Number(amountCLP)) / futureInvested) * 100;
+  const targetValue = portfolio.investedCLP * asset.targetWeight / 100;
   const amountToTarget = Math.max(0, targetValue - asset.valueCLP);
   const yearsTo2030 = Math.max(0, 2030 - new Date().getFullYear());
   const scenarios = Object.entries(asset.scenarioReturns).map(([key, rate]) => ({

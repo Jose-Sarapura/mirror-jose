@@ -72,14 +72,18 @@ export async function GET() {
     };
   });
 
-  const totalCLP = assets.reduce((sum, asset) => sum + asset.valueCLP, 0) + defaults.cashCLP;
-  const previousTotalCLP = assets.reduce((sum, asset) => sum + asset.previousValueCLP, 0) + defaults.cashCLP;
+  const cashUSDCLP = defaults.cashUSD * fx;
+  const totalCashCLP = defaults.cashCLP + cashUSDCLP;
+  const investedCLP = assets.reduce((sum, asset) => sum + asset.valueCLP, 0);
+  const previousInvestedCLP = assets.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
+  const totalCLP = investedCLP + totalCashCLP;
+  const previousTotalCLP = previousInvestedCLP + totalCashCLP;
 
   const enrichedAssets = assets.map((asset) => ({
     ...asset,
-    weight: totalCLP ? (asset.valueCLP / totalCLP) * 100 : 0,
-    targetValueCLP: totalCLP * (asset.targetWeight / 100),
-    gapCLP: totalCLP * (asset.targetWeight / 100) - asset.valueCLP,
+    weight: investedCLP ? (asset.valueCLP / investedCLP) * 100 : 0,
+    targetValueCLP: investedCLP * (asset.targetWeight / 100),
+    gapCLP: investedCLP * (asset.targetWeight / 100) - asset.valueCLP,
   }));
 
   return NextResponse.json({
@@ -87,10 +91,14 @@ export async function GET() {
     fx,
     fxSource: fxQuote.source,
     totalCLP,
+    investedCLP,
     previousTotalCLP,
     dayChangeCLP: totalCLP - previousTotalCLP,
     dayChangePct: previousTotalCLP ? ((totalCLP / previousTotalCLP) - 1) * 100 : 0,
     cashCLP: defaults.cashCLP,
+    cashUSD: defaults.cashUSD,
+    cashUSDCLP,
+    totalCashCLP,
     goalCLP: defaults.goalCLP,
     monthlyContributionCLP: defaults.monthlyContributionCLP,
     assets: enrichedAssets,

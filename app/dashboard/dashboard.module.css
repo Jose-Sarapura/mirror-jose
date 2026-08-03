@@ -402,7 +402,7 @@
 .scenarioGrid small { color: #94a0af; font-size: 9px; line-height: 1.45; }
 
 .settingsPanel { padding: 24px; }
-.settingsGeneral { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.settingsGeneral { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
 .settingsPanel label { color: var(--muted); font-size: 9px; font-weight: 700; }
 .settingsPanel input { width: 100%; min-width: 0; margin-top: 7px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 11px; outline: 0; background: rgba(0,0,0,.18); color: var(--text); font-size: 11px; }
 .settingsPanel input:focus { border-color: rgba(112,167,255,.42); }
@@ -631,4 +631,27 @@
   .purchaseHistoryRow { grid-template-columns: 1fr 1fr; }
   .purchaseHistoryRow button { justify-self: start; }
   .settingsHead, .settingsRow { min-width: 620px; }
+}
+
+/* Wallets v2.3 */
+.walletSummary { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 14px 0; }
+.walletSummary article { padding: 17px 18px; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); }
+.walletSummary span, .walletSummary strong, .walletSummary small { display: block; }
+.walletSummary span { color: var(--muted); font-size: 9px; }
+.walletSummary strong { margin-top: 7px; font-size: 17px; letter-spacing: -.025em; }
+.walletSummary small { margin-top: 5px; color: #8f9baa; font-size: 8px; line-height: 1.45; }
+.walletBadge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 8px 11px; border: 1px solid rgba(112,167,255,.22); border-radius: 999px; background: rgba(112,167,255,.07); color: #b8d0ff; font-size: 9px; font-weight: 800; }
+.walletHint { margin: 11px 0 0; color: var(--muted); font-size: 9px; }
+.walletHint strong { color: var(--text); }
+.purchaseCalculated small { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; }
+.primaryButton:disabled { cursor: not-allowed; opacity: .45; }
+
+@media (max-width: 1120px) {
+  .walletSummary { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 540px) {
+  .walletSummary { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .walletSummary article { padding: 14px; }
+  .walletSummary strong { font-size: 14px; }
 }

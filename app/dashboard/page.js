@@ -11,7 +11,7 @@ import ProjectionChart from './components/ProjectionChart';
 import Icon from './components/Icon';
 import PurchaseRegistrar from './components/PurchaseRegistrar';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
-import { createDefaultSettings, mergeStoredSettings, STORAGE_KEY } from './lib/settings';
+import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
 import styles from './dashboard.module.css';
 
@@ -24,10 +24,7 @@ export default function DashboardPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      if (stored) setSettings(mergeStoredSettings(stored));
-    } catch {}
+    setSettings(readStoredSettings(localStorage));
   }, []);
 
   const load = useCallback(async () => {
@@ -53,7 +50,7 @@ export default function DashboardPage() {
   const portfolio = useMemo(() => mergePortfolioData(apiData, settings), [apiData, settings]);
 
   const saveSettings = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    persistSettings(localStorage, settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -61,7 +58,7 @@ export default function DashboardPage() {
   const resetSettings = () => {
     const next = createDefaultSettings();
     setSettings(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    persistSettings(localStorage, next);
   };
 
   if (!portfolio) {
@@ -101,7 +98,7 @@ export default function DashboardPage() {
                 <span className={styles.liveDot} />
                 <span>{marketState === 'REGULAR' ? 'Mercado abierto' : 'Valores actualizados'}</span>
               </div>
-              <p>Patrimonio de inversión</p>
+              <p>Patrimonio total</p>
               <h2>{clp.format(portfolio.totalCLP)}</h2>
               <div className={styles.heroReturns}>
                 <span className={portfolio.dayChangeCLP >= 0 ? styles.positiveBadge : styles.negativeBadge}>
@@ -121,6 +118,29 @@ export default function DashboardPage() {
                 <small>Faltan {clp.format(Math.max(0, goalCLP - portfolio.totalCLP))}</small>
               </div>
             </div>
+          </section>
+
+          <section className={styles.walletSummary}>
+            <article>
+              <span>Capital invertido</span>
+              <strong>{clp.format(portfolio.investedCLP)}</strong>
+              <small>VOO, SMH, BCH y Acciones Globales</small>
+            </article>
+            <article>
+              <span>Billetera USD</span>
+              <strong>{nativeMoney(portfolio.cashUSD, 'USD')}</strong>
+              <small>{clp.format(portfolio.cashUSDCLP)} al tipo de cambio actual</small>
+            </article>
+            <article>
+              <span>Billetera CLP</span>
+              <strong>{clp.format(portfolio.cashCLP)}</strong>
+              <small>Disponible para activos nacionales</small>
+            </article>
+            <article>
+              <span>Efectivo disponible</span>
+              <strong>{clp.format(portfolio.totalCashCLP)}</strong>
+              <small>Incluido en el patrimonio total</small>
+            </article>
           </section>
 
           <section className={styles.statGrid}>
@@ -148,7 +168,7 @@ export default function DashboardPage() {
                 <div><p className={styles.kicker}>Asignación</p><h2>Actual vs. objetivo</h2></div>
                 <button type="button" onClick={() => setActive('portfolio')}>Ver detalle <Icon name="arrow" size={16} /></button>
               </div>
-              <AllocationChart assets={portfolio.assets} totalCLP={portfolio.totalCLP} />
+              <AllocationChart assets={portfolio.assets} totalCLP={portfolio.investedCLP} />
             </section>
 
             <section className={styles.panel}>
@@ -269,12 +289,13 @@ export default function DashboardPage() {
 
       {active === 'settings' && (
         <section className={styles.pageSection}>
-          <div className={styles.pageTitle}><p className={styles.kicker}>Configuración</p><h2>Datos de tu portafolio</h2><span>Actualiza una compra en segundos, sin tocar código.</span></div>
+          <div className={styles.pageTitle}><p className={styles.kicker}>Configuración</p><h2>Datos de tu portafolio</h2><span>Administra billeteras y registra compras sin tocar código.</span></div>
           <section className={styles.settingsPanel}>
             <div className={styles.settingsGeneral}>
               <label>Meta patrimonial<input type="number" value={settings.goalCLP} onChange={(event) => setSettings({ ...settings, goalCLP: Number(event.target.value) })} /></label>
               <label>Aporte mensual<input type="number" value={settings.monthlyContributionCLP} onChange={(event) => setSettings({ ...settings, monthlyContributionCLP: Number(event.target.value) })} /></label>
-              <label>Caja en CLP<input type="number" value={settings.cashCLP} onChange={(event) => setSettings({ ...settings, cashCLP: Number(event.target.value) })} /></label>
+              <label>Billetera USD<input type="number" min="0" step="0.01" value={settings.cashUSD} onChange={(event) => setSettings({ ...settings, cashUSD: Number(event.target.value) })} /></label>
+              <label>Billetera CLP<input type="number" min="0" step="1" value={settings.cashCLP} onChange={(event) => setSettings({ ...settings, cashCLP: Number(event.target.value) })} /></label>
             </div>
             <PurchaseRegistrar portfolio={portfolio} settings={settings} setSettings={setSettings} />
             <div className={styles.settingsAssets}>
