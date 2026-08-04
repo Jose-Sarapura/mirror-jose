@@ -1,8 +1,8 @@
 import { MIRROR_DEFAULTS } from '../../lib/mirror-config';
 
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 export const STORAGE_KEY = `mirror-v2-settings-v${SETTINGS_VERSION}`;
-export const LEGACY_STORAGE_KEYS = ['mirror-v2-settings-v3'];
+export const LEGACY_STORAGE_KEYS = ['mirror-v2-settings-v4', 'mirror-v2-settings-v3'];
 
 export function createDefaultSettings() {
   return {
@@ -52,7 +52,20 @@ export function readStoredSettings(storage) {
       const raw = storage.getItem(key);
       if (!raw) continue;
       const merged = mergeStoredSettings(JSON.parse(raw));
-      if (key !== STORAGE_KEY) storage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+      // Migración v5: conserva compras, costos, participaciones y billeteras,
+      // pero corrige la asignación estratégica definitiva 60/20/5/15.
+      if (key !== STORAGE_KEY) {
+        merged.assets = {
+          ...merged.assets,
+          VOO: { ...merged.assets.VOO, targetWeight: 60 },
+          SMH: { ...merged.assets.SMH, targetWeight: 20 },
+          BCH: { ...merged.assets.BCH, targetWeight: 5 },
+          CFIETFGE: { ...merged.assets.CFIETFGE, targetWeight: 15 },
+        };
+        storage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      }
+
       return merged;
     } catch {}
   }
