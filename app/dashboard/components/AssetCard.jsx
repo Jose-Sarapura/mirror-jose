@@ -1,12 +1,22 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Icon from './Icon';
 import { clp, nativeMoney, percentage, shares } from '../lib/format';
+import { historyMetrics } from '../lib/calculations';
 import styles from '../dashboard.module.css';
 
 export default function AssetCard({ asset }) {
   const positive = asset.totalReturnPct >= 0;
+  const [yearHistory, setYearHistory] = useState([]);
+  useEffect(() => {
+    fetch(`/api/dashboard/history?ticker=${asset.ticker}&range=1y`)
+      .then((response) => response.json())
+      .then((result) => setYearHistory(result.points || []))
+      .catch(() => setYearHistory([]));
+  }, [asset.ticker]);
+  const yearMetrics = useMemo(() => historyMetrics(yearHistory), [yearHistory]);
   const targetRatio = Math.min(100, (asset.weight / asset.targetWeight) * 100);
 
   return (
@@ -32,6 +42,14 @@ export default function AssetCard({ asset }) {
         <span><small>Costo prom.</small><strong>{nativeMoney(asset.averageCost, asset.currency)}</strong></span>
         <span><small>Participaciones</small><strong>{shares(asset.shares)}</strong></span>
       </div>
+
+      {yearMetrics && (
+        <div className={styles.cardRangeContext}>
+          <span><small>Mín. 1 año</small><strong>{nativeMoney(yearMetrics.low, asset.currency)}</strong></span>
+          <span><small>Máx. 1 año</small><strong>{nativeMoney(yearMetrics.high, asset.currency)}</strong></span>
+          <span><small>Al máximo</small><strong>{percentage(((asset.price / yearMetrics.high) - 1) * 100)}</strong></span>
+        </div>
+      )}
 
       <div className={styles.targetHeader}>
         <span>{asset.weight.toFixed(1)}% actual</span>

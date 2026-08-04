@@ -27,6 +27,7 @@ export default function AssetDetail({ ticker }) {
   const [historySource, setHistorySource] = useState('loading');
   const [amountCLP, setAmountCLP] = useState(150000);
   const [settings, setSettings] = useState(null);
+  const [contextHistory, setContextHistory] = useState({ oneYear: [], fiveYears: [] });
 
   useEffect(() => {
     setSettings(readStoredSettings(localStorage));
@@ -35,6 +36,15 @@ export default function AssetDetail({ ticker }) {
   useEffect(() => {
     fetch('/api/dashboard/portfolio', { cache: 'no-store' }).then((response) => response.json()).then(setApiData);
   }, []);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/dashboard/history?ticker=${ticker}&range=1y`).then((response) => response.json()),
+      fetch(`/api/dashboard/history?ticker=${ticker}&range=5y`).then((response) => response.json()),
+    ]).then(([oneYear, fiveYears]) => {
+      setContextHistory({ oneYear: oneYear.points || [], fiveYears: fiveYears.points || [] });
+    }).catch(() => setContextHistory({ oneYear: [], fiveYears: [] }));
+  }, [ticker]);
 
   useEffect(() => {
     setHistorySource('loading');
@@ -50,6 +60,8 @@ export default function AssetDetail({ ticker }) {
   const portfolio = useMemo(() => apiData ? mergePortfolioData(apiData, settings || {}) : null, [apiData, settings]);
   const asset = portfolio?.assets.find((item) => item.ticker === ticker);
   const metrics = useMemo(() => historyMetrics(history), [history]);
+  const oneYearMetrics = useMemo(() => historyMetrics(contextHistory.oneYear), [contextHistory.oneYear]);
+  const fiveYearMetrics = useMemo(() => historyMetrics(contextHistory.fiveYears), [contextHistory.fiveYears]);
   const chartPurchases = useMemo(() => [
     ...(PURCHASES[ticker] || []),
     ...((settings?.transactions || []).filter((transaction) => transaction.ticker === ticker)),
@@ -136,6 +148,8 @@ export default function AssetDetail({ ticker }) {
             <div><span>Máxima caída</span><strong className={styles.negative}>{metrics ? percentage(metrics.maxDrawdown) : '—'}</strong></div>
           </div>
           <p className={styles.chartNote}><span className={styles.costLegend} /> Línea amarilla: costo promedio. <span className={styles.buyLegend} /> Puntos: compras registradas.</p>
+
+          <HistoricalContext asset={asset} oneYear={oneYearMetrics} fiveYears={fiveYearMetrics} />
         </section>
 
         <div className={styles.assetTwoColumn}>
@@ -188,6 +202,66 @@ export default function AssetDetail({ ticker }) {
       </main>
     </div>
   );
+}
+
+
+function HistoricalContext({ asset, oneYear, fiveYears }) {
+  const rows = [
+    { label: '1 año', metrics: oneYear },
+    { label: '5 años', metrics: fiveYears },
+  ];
+  const averageGap = asset.averageCost > 0 ? ((asset.price / asset.averageCost) - 1) * 100 : 0;
+  return (
+    <section className={styles.historicalContext}>
+      <div className={styles.historicalHeader}>
+        <div><p className={styles.kicker}>Contexto histórico</p><h3>Precio actual frente a sus rangos</h3></div>
+        <div className={styles.averageComparison}>
+          <span>Frente a tu costo promedio</span>
+          <strong className={averageGap >= 0 ? styles.positive : styles.negative}>{percentage(averageGap)}</strong>
+        </div>
+      </div>
+      <div className={styles.historicalGrid}>
+        {rows.map(({ label, metrics }) => {
+          if (!metrics) return <article key={label}><span>Rango {label}</span><strong>Sin datos</strong></article>;
+          const toHigh = ((asset.price / metrics.high) - 1) * 100;
+          const fromLow = ((asset.price / metrics.low) - 1) * 100;
+          return (
+            <article key={label}>
+              <div className={styles.rangeTitle}><span>Rango {label}</span><strong>{rangeMessage(asset.price, metrics.low, metrics.high)}</strong></div>
+              <div className={styles.rangeValues}>
+                <div><small>Mínimo</small><strong>{nativeMoney(metrics.low, asset.currency)}</strong></div>
+                <div><small>Actual</small><strong>{nativeMoney(asset.price, asset.currency)}</strong></div>
+                <div><small>Máximo</small><strong>{nativeMoney(metrics.high, asset.currency)}</strong></div>
+              </div>
+              <div className={styles.rangeTrack}><span style={{ width: `${rangePosition(asset.price, metrics.low, metrics.high)}%` }} /></div>
+              <div className={styles.rangeDistances}>
+                <span>Desde mínimo <strong className={styles.positive}>{percentage(fromLow)}</strong></span>
+                <span>Al máximo <strong className={styles.negative}>{percentage(toHigh)}</strong></span>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className={styles.personalAlerts}>
+        <div><span>Recupera tu costo promedio</span><strong>{nativeMoney(asset.averageCost, asset.currency)}</strong></div>
+        <div><span>10% bajo tu promedio</span><strong>{nativeMoney(asset.averageCost * .9, asset.currency)}</strong></div>
+        <div><span>20% bajo tu promedio</span><strong>{nativeMoney(asset.averageCost * .8, asset.currency)}</strong></div>
+        <div><span>Objetivo de cartera</span><strong>{asset.targetWeight}%</strong></div>
+      </div>
+    </section>
+  );
+}
+
+function rangePosition(price, low, high) {
+  if (!Number.isFinite(price) || !Number.isFinite(low) || !Number.isFinite(high) || high <= low) return 0;
+  return Math.max(0, Math.min(100, ((price - low) / (high - low)) * 100));
+}
+
+function rangeMessage(price, low, high) {
+  const position = rangePosition(price, low, high);
+  if (position >= 75) return 'Cerca del máximo';
+  if (position <= 25) return 'Cerca del mínimo';
+  return 'Zona intermedia';
 }
 
 function attachPurchases(points, purchases) {

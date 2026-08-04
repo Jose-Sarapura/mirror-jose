@@ -655,3 +655,42 @@
   .walletSummary article { padding: 14px; }
   .walletSummary strong { font-size: 14px; }
 }
+
+/* Historical context */
+.historicalContext { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border); }
+.historicalHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+.historicalHeader h3 { margin: 4px 0 0; font-size: 18px; letter-spacing: -.03em; }
+.averageComparison { text-align: right; }
+.averageComparison span, .averageComparison strong { display: block; }
+.averageComparison span { color: var(--muted); font-size: 9px; }
+.averageComparison strong { margin-top: 4px; font-size: 14px; }
+.historicalGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.historicalGrid article { padding: 15px; border: 1px solid var(--border); border-radius: 15px; background: rgba(255,255,255,.022); }
+.rangeTitle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.rangeTitle span { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.rangeTitle strong { color: #c9d5e5; font-size: 10px; }
+.rangeValues { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.rangeValues div:nth-child(2) { text-align: center; }
+.rangeValues div:last-child { text-align: right; }
+.rangeValues small, .rangeValues strong { display: block; }
+.rangeValues small { color: var(--muted); font-size: 8px; }
+.rangeValues strong { margin-top: 4px; font-size: 11px; }
+.rangeTrack { overflow: hidden; height: 6px; margin: 13px 0 10px; border-radius: 999px; background: linear-gradient(90deg, rgba(40,217,167,.25), rgba(243,184,91,.22), rgba(255,111,125,.25)); }
+.rangeTrack span { display: block; width: 0; height: 100%; border-right: 3px solid #fff; background: linear-gradient(90deg, rgba(112,167,255,.15), rgba(112,167,255,.5)); }
+.rangeDistances { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 8px; }
+.rangeDistances strong { margin-left: 3px; }
+.personalAlerts { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 10px; }
+.personalAlerts div { padding: 11px; border-radius: 11px; background: rgba(255,255,255,.022); }
+.personalAlerts span, .personalAlerts strong { display: block; }
+.personalAlerts span { color: var(--muted); font-size: 8px; }
+.personalAlerts strong { margin-top: 5px; font-size: 11px; }
+.cardRangeContext { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: -4px 0 16px; padding: 11px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.cardRangeContext span, .cardRangeContext small, .cardRangeContext strong { display: block; }
+.cardRangeContext small { color: var(--muted); font-size: 8px; }
+.cardRangeContext strong { margin-top: 4px; font-size: 10px; }
+
+@media (max-width: 700px) {
+  .historicalHeader { align-items: flex-start; }
+  .historicalGrid { grid-template-columns: 1fr; }
+  .personalAlerts { grid-template-columns: repeat(2,1fr); }
+}
