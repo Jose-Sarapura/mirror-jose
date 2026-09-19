@@ -3420,3 +3420,125 @@
   .btcHealthRedundancy,
   .btcHealthCurrent { grid-template-columns: 1fr; }
 }
+
+
+/* BTC Health Gate V2 dynamic */
+.btcDangerPill {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(255,111,125,.11);
+  color: #ff8d98;
+  font-size: 8px;
+  font-weight: 800;
+}
+.btcHealthError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(243,184,91,.18);
+  border-radius: 11px;
+  background: rgba(243,184,91,.04);
+  color: #d9b97f;
+  font-size: 8px;
+}
+.btcLiveMetric {
+  margin-top: 11px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+}
+.btcLiveMetric span,
+.btcLiveMetric strong { display: block; }
+.btcLiveMetric span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.btcLiveMetric strong {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.btcPersistence {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 9px;
+}
+.btcPersistence > span {
+  color: #7f8d9f;
+  font-size: 7px;
+  line-height: 1.35;
+}
+.btcPersistence strong {
+  color: #c8d2de;
+  font-weight: 800;
+}
+.btcHealthDataQuality {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.btcHealthDataQuality > div {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.012);
+}
+.btcHealthDataQuality span,
+.btcHealthDataQuality strong,
+.btcHealthDataQuality small { display: block; }
+.btcHealthDataQuality span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.btcHealthDataQuality strong {
+  margin-top: 5px;
+  font-size: 11px;
+}
+.btcHealthDataQuality small {
+  margin-top: 4px;
+  color: #7f8d9f;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.btcStageActive {
+  border-color: rgba(112,167,255,.3) !important;
+  background: rgba(112,167,255,.05) !important;
+  box-shadow: inset 0 0 0 1px rgba(112,167,255,.05);
+}
+.btcHealthResearchNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: rgba(255,255,255,.01);
+}
+.btcHealthResearchNote > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #9ec2ff;
+}
+.btcHealthResearchNote strong {
+  display: block;
+  font-size: 8px;
+}
+.btcHealthResearchNote p {
+  margin: 5px 0 0;
+  color: #8694a5;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+@media (max-width: 980px) {
+  .btcHealthDataQuality { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 620px) {
+  .btcHealthDataQuality,
+  .btcPersistence { grid-template-columns: 1fr; }
+}
