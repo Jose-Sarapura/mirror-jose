@@ -13,6 +13,7 @@ import PurchaseRegistrar from './components/PurchaseRegistrar';
 import FormattedNumberInput from './components/FormattedNumberInput';
 import OpportunityRadar from './components/OpportunityRadar';
 import PortfolioHealthGate from './components/PortfolioHealthGate';
+import RealExposure from './components/RealExposure';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -260,6 +261,7 @@ export default function DashboardPage() {
         <section className={styles.pageSection}>
           <div className={styles.pageTitle}><p className={styles.kicker}>Mirror Intelligence</p><h2>Qué significan tus números</h2><span>Interpretación automática según tu estrategia y costo de entrada.</span></div>
           <PortfolioHealthGate portfolio={portfolio} />
+          <RealExposure portfolio={portfolio} />
           <div className={styles.riskPanel}>
             <div><p className={styles.kicker}>Constitución Mirror</p><h2>Disciplina antes que cantidad</h2></div>
             <div className={styles.rulesGrid}>
