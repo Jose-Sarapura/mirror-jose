@@ -33,6 +33,9 @@ function normalize(entries) {
       reviewNote: entry.reviewNote || '',
       source: entry.source || 'manual',
       sourceTransactionId: entry.sourceTransactionId || '',
+      snapshot: entry.snapshot || null,
+      review: entry.review || null,
+      reviewedAt: entry.reviewedAt || '',
     }))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -69,6 +72,9 @@ export function appendDecisionLog(storage, entry) {
     reviewNote: entry.reviewNote || '',
     source: entry.source || 'manual',
     sourceTransactionId: entry.sourceTransactionId || '',
+    snapshot: entry.snapshot || null,
+    review: entry.review || null,
+    reviewedAt: entry.reviewedAt || '',
   };
   persistDecisionLog(storage, [next, ...entries]);
   return next;
@@ -87,13 +93,28 @@ export function removeDecisionBySource(storage, sourceTransactionId) {
   return next;
 }
 
-export function reviewDecision(storage, decisionId, reviewNote) {
+export function reviewDecision(storage, decisionId, reviewInput) {
+  const review = typeof reviewInput === 'string'
+    ? {
+        process: 'respected',
+        outcome: 'too_early',
+        thesis: 'not_applicable',
+        lesson: String(reviewInput || '').trim(),
+      }
+    : {
+        process: reviewInput?.process || 'respected',
+        outcome: reviewInput?.outcome || 'too_early',
+        thesis: reviewInput?.thesis || 'not_applicable',
+        lesson: String(reviewInput?.lesson || '').trim(),
+      };
+
   const next = readDecisionLog(storage).map((entry) => (
     entry.id === decisionId
       ? {
           ...entry,
           reviewStatus: 'reviewed',
-          reviewNote: String(reviewNote || '').trim(),
+          reviewNote: review.lesson,
+          review,
           reviewedAt: new Date().toISOString(),
         }
       : entry
