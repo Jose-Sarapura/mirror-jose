@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildActionPlan } from '../lib/action-engine';
 import { appendDecisionLog } from '../lib/decision-log';
-import { clp } from '../lib/format';
+import { clp, nativeMoney, shares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
 
@@ -113,12 +113,16 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
         {plan.allocations.map((item, index) => (
           <article className={index === 0 ? styles.actionAllocationPrimary : styles.actionAllocation} key={item.ticker}>
             <div>
-              <span>{item.priority}</span>
+              <span>{item.priority} · {item.actionLabel}</span>
               <strong translate="no">{item.ticker}</strong>
             </div>
             <div className={styles.actionAllocationMoney}>
               <strong>{clp.format(item.amountCLP)}</strong>
               <span>{item.shareOfContribution.toFixed(0)}% del aporte</span>
+              <small>
+                Compra estimada: <b>{nativeMoney(item.amountNative, item.currency)}</b>
+                {item.estimatedShares > 0 && <> · <b>{shares(item.estimatedShares)}</b> participaciones</>}
+              </small>
             </div>
             <div className={styles.actionAllocationWeights}>
               <span>Ahora <b>{item.currentWeight.toFixed(1)}%</b></span>
@@ -126,6 +130,7 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
               <span>Después <b>{item.projectedWeight.toFixed(1)}%</b></span>
               <small>Objetivo {item.targetWeight}%</small>
             </div>
+            <p className={styles.actionAllocationReason}>{item.reason}</p>
           </article>
         ))}
       </div>
@@ -193,8 +198,9 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
         <div>
           <Icon name="shield" size={16} />
           <span>
-            <strong>Importante:</strong> una oportunidad externa aprobada no recibe automáticamente parte del aporte mensual.
-            Primero debe incorporarse formalmente a la estrategia y definirse su porcentaje.
+            <strong>Importante:</strong> “complemento” no significa que el activo esté infraponderado.
+            Puede recibir una fracción del aporte solo para mantenerse cerca de su objetivo después de que aumenta el patrimonio total.
+            Los montos en USD y participaciones son estimaciones al precio y tipo de cambio actuales.
           </span>
         </div>
         <button type="button" onClick={registerPlan}>
