@@ -20,6 +20,7 @@ import LearningLoop from './components/LearningLoop';
 import CryptoExposure from './components/CryptoExposure';
 import CryptoProtectionMonitor from './components/CryptoProtectionMonitor';
 import BTCCycleLab from './components/BTCCycleLab';
+import BTCHealthGate from './components/BTCHealthGate';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -313,6 +314,7 @@ export default function DashboardPage() {
           <CryptoExposure portfolio={portfolio} />
           <CryptoProtectionMonitor portfolio={portfolio} />
           <BTCCycleLab />
+          <BTCHealthGate />
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
