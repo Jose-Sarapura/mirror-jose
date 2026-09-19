@@ -12,6 +12,7 @@ import Icon from './components/Icon';
 import PurchaseRegistrar from './components/PurchaseRegistrar';
 import FormattedNumberInput from './components/FormattedNumberInput';
 import OpportunityRadar from './components/OpportunityRadar';
+import PortfolioHealthGate from './components/PortfolioHealthGate';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -258,24 +259,7 @@ export default function DashboardPage() {
       {active === 'intelligence' && (
         <section className={styles.pageSection}>
           <div className={styles.pageTitle}><p className={styles.kicker}>Mirror Intelligence</p><h2>Qué significan tus números</h2><span>Interpretación automática según tu estrategia y costo de entrada.</span></div>
-          <div className={styles.insightGrid}>
-            {portfolio.assets.map((asset) => {
-              const belowCost = asset.price < asset.averageCost;
-              return (
-                <Link href={`/dashboard/activo/${asset.ticker}`} className={styles.insightCard} key={asset.ticker}>
-                  <div className={styles.insightTop}><span style={{ color: asset.accent }}>{asset.ticker}</span><b className={asset.risk === 'Alto' ? styles.negativeBadge : styles.neutralBadge}>Riesgo {asset.risk}</b></div>
-                  <h3>{asset.allocationStatus}</h3>
-                  <p>{asset.thesis}</p>
-                  <ul>
-                    <li><Icon name="check" size={15} /> Peso: {asset.weight.toFixed(1)}% vs. objetivo {asset.targetWeight}%.</li>
-                    <li><Icon name={belowCost ? 'target' : 'chart'} size={15} /> {belowCost ? `Precio ${Math.abs(asset.totalReturnPct).toFixed(1)}% bajo tu promedio.` : `Precio ${asset.totalReturnPct.toFixed(1)}% sobre tu promedio.`}</li>
-                    <li><Icon name="shield" size={15} /> Rol: {asset.role}.</li>
-                  </ul>
-                  <span className={styles.cardLink}>Abrir análisis <Icon name="arrow" size={15} /></span>
-                </Link>
-              );
-            })}
-          </div>
+          <PortfolioHealthGate portfolio={portfolio} />
           <div className={styles.riskPanel}>
             <div><p className={styles.kicker}>Constitución Mirror</p><h2>Disciplina antes que cantidad</h2></div>
             <div className={styles.rulesGrid}>
