@@ -14,6 +14,7 @@ import FormattedNumberInput from './components/FormattedNumberInput';
 import OpportunityRadar from './components/OpportunityRadar';
 import PortfolioHealthGate from './components/PortfolioHealthGate';
 import RealExposure from './components/RealExposure';
+import DisciplineMode from './components/DisciplineMode';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -260,21 +261,9 @@ export default function DashboardPage() {
       {active === 'intelligence' && (
         <section className={styles.pageSection}>
           <div className={styles.pageTitle}><p className={styles.kicker}>Mirror Intelligence</p><h2>Qué significan tus números</h2><span>Interpretación automática según tu estrategia y costo de entrada.</span></div>
+          <DisciplineMode portfolio={portfolio} />
           <PortfolioHealthGate portfolio={portfolio} />
           <RealExposure portfolio={portfolio} />
-          <div className={styles.riskPanel}>
-            <div><p className={styles.kicker}>Constitución Mirror</p><h2>Disciplina antes que cantidad</h2></div>
-            <div className={styles.rulesGrid}>
-              <article><strong>1</strong><span>Entender antes de comprar: cada activo necesita una función y una tesis clara.</span></article>
-              <article><strong>2</strong><span>Precio no es valor: una caída activa análisis, no una compra automática.</span></article>
-              <article><strong>3</strong><span>Diversificación real: revisar solapamientos antes de sumar otro ETF o acción.</span></article>
-              <article><strong>4</strong><span>Retorno, riesgo y liquidez se evalúan juntos.</span></article>
-              <article><strong>5</strong><span>VOO sigue siendo el núcleo; SMH conserva su límite estratégico de 20%.</span></article>
-              <article><strong>6</strong><span>Los aportes nuevos corrigen brechas antes de vender posiciones.</span></article>
-              <article><strong>7</strong><span>El riesgo debe reducirse gradualmente al acercarnos a 45, 50 y 55 años.</span></article>
-              <article><strong>8</strong><span>Registrar decisiones permite aprender del proceso, no solo del resultado.</span></article>
-            </div>
-          </div>
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
