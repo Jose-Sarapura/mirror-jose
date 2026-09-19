@@ -16,6 +16,8 @@ import {
   PROCESS_OPTIONS,
   OUTCOME_OPTIONS,
   THESIS_OPTIONS,
+  BIAS_OPTIONS,
+  biasLabel,
   learningClassification,
 } from '../lib/decision-learning';
 import styles from '../dashboard.module.css';
@@ -44,6 +46,7 @@ export default function DecisionJournal({ portfolio }) {
     decision: '',
     reason: '',
     evidence: '',
+    bias: 'none',
     reviewDate: addDays(today(), 90),
   }));
   const [error, setError] = useState('');
@@ -131,6 +134,7 @@ export default function DecisionJournal({ portfolio }) {
       decision: '',
       reason: '',
       evidence: '',
+      bias: 'none',
       reviewDate: addDays(today(), 90),
     });
   };
@@ -145,6 +149,7 @@ export default function DecisionJournal({ portfolio }) {
       process: 'respected',
       outcome: 'too_early',
       thesis: 'intact',
+      bias: entry.bias || 'not_recorded',
       lesson: '',
     };
     const lesson = String(draft.lesson || '').trim();
@@ -231,6 +236,15 @@ export default function DecisionJournal({ portfolio }) {
             </select>
           </label>
 
+          <label>
+            Chequeo conductual
+            <select value={form.bias} onChange={(event) => setForm({ ...form, bias: event.target.value })}>
+              {BIAS_OPTIONS.filter((item) => item.value !== 'not_recorded').map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </label>
+
           <label className={styles.decisionWide}>
             Decisión tomada
             <input
@@ -295,11 +309,12 @@ export default function DecisionJournal({ portfolio }) {
             <h3>{entry.decision}</h3>
             <p>{entry.reason}</p>
 
-            {(entry.ruleTitle || entry.evidence) && (
+            {(entry.ruleTitle || entry.evidence || entry.bias) && (
               <details className={styles.decisionEvidence}>
                 <summary>Ver regla y evidencia</summary>
                 {entry.ruleTitle && <span><strong>Regla:</strong> {entry.ruleTitle}</span>}
                 {entry.evidence && <span><strong>Evidencia:</strong> {entry.evidence}</span>}
+                {entry.bias && <span><strong>Chequeo conductual:</strong> {biasLabel(entry.bias)}</span>}
               </details>
             )}
 
@@ -314,6 +329,7 @@ export default function DecisionJournal({ portfolio }) {
                         Proceso: {PROCESS_OPTIONS.find((item) => item.value === entry.review.process)?.label || entry.review.process}
                         {' · '}Resultado: {OUTCOME_OPTIONS.find((item) => item.value === entry.review.outcome)?.label || entry.review.outcome}
                         {' · '}Tesis: {THESIS_OPTIONS.find((item) => item.value === entry.review.thesis)?.label || entry.review.thesis}
+                        {' · '}Sesgo: {biasLabel(entry.review.bias || entry.bias || 'not_recorded')}
                       </small>
                     )}
                   </div>
@@ -331,7 +347,7 @@ export default function DecisionJournal({ portfolio }) {
                         value={reviewDrafts[entry.id]?.process || 'respected'}
                         onChange={(event) => setReviewDrafts((current) => ({
                           ...current,
-                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], process: event.target.value },
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', bias: entry.bias || 'not_recorded', lesson: '', ...current[entry.id], process: event.target.value },
                         }))}
                       >
                         {PROCESS_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
@@ -343,7 +359,7 @@ export default function DecisionJournal({ portfolio }) {
                         value={reviewDrafts[entry.id]?.outcome || 'too_early'}
                         onChange={(event) => setReviewDrafts((current) => ({
                           ...current,
-                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], outcome: event.target.value },
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', bias: entry.bias || 'not_recorded', lesson: '', ...current[entry.id], outcome: event.target.value },
                         }))}
                       >
                         {OUTCOME_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
@@ -355,10 +371,30 @@ export default function DecisionJournal({ portfolio }) {
                         value={reviewDrafts[entry.id]?.thesis || 'intact'}
                         onChange={(event) => setReviewDrafts((current) => ({
                           ...current,
-                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], thesis: event.target.value },
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', bias: entry.bias || 'not_recorded', lesson: '', ...current[entry.id], thesis: event.target.value },
                         }))}
                       >
                         {THESIS_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Sesgo detectado
+                      <select
+                        value={reviewDrafts[entry.id]?.bias || entry.bias || 'not_recorded'}
+                        onChange={(event) => setReviewDrafts((current) => ({
+                          ...current,
+                          [entry.id]: {
+                            process: 'respected',
+                            outcome: 'too_early',
+                            thesis: 'intact',
+                            bias: entry.bias || 'not_recorded',
+                            lesson: '',
+                            ...current[entry.id],
+                            bias: event.target.value,
+                          },
+                        }))}
+                      >
+                        {BIAS_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
                       </select>
                     </label>
                     <label className={styles.decisionReviewLesson}>
@@ -368,7 +404,7 @@ export default function DecisionJournal({ portfolio }) {
                         value={reviewDrafts[entry.id]?.lesson || ''}
                         onChange={(event) => setReviewDrafts((current) => ({
                           ...current,
-                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], lesson: event.target.value },
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', bias: entry.bias || 'not_recorded', lesson: '', ...current[entry.id], lesson: event.target.value },
                         }))}
                         placeholder="¿Qué aprendimos del proceso, no solo del resultado?"
                       />
