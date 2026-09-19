@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { persistSettings, registerPurchase, removePurchase } from '../lib/settings';
 import { appendDecisionLog, removeDecisionBySource } from '../lib/decision-log';
-import { buildDecisionSnapshot } from '../lib/decision-learning';
+import { BIAS_OPTIONS, buildDecisionSnapshot } from '../lib/decision-learning';
 import { clp, nativeMoney, shares as formatShares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -22,6 +22,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const [date, setDate] = useState(todayInChile);
   const [amount, setAmount] = useState('');
   const [purchasedShares, setPurchasedShares] = useState('');
+  const [bias, setBias] = useState('none');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -71,6 +72,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         reviewDate: reviewDate.toISOString().slice(0, 10),
         source: 'purchase',
         sourceTransactionId: result.transaction.id,
+        bias,
         snapshot: buildDecisionSnapshot(portfolio, ticker, {
           purchaseAmount: Number(amount),
           purchaseShares: Number(purchasedShares),
@@ -85,6 +87,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
       );
       setAmount('');
       setPurchasedShares('');
+      setBias('none');
     } catch (submitError) {
       setError(submitError.message);
     }
@@ -139,6 +142,14 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         <label>
           Participaciones compradas
           <input type="number" min="0" step="0.00000001" placeholder="0.21955002" value={purchasedShares} onChange={(event) => setPurchasedShares(event.target.value)} required />
+        </label>
+        <label>
+          Chequeo conductual
+          <select value={bias} onChange={(event) => setBias(event.target.value)}>
+            {BIAS_OPTIONS.filter((item) => item.value !== 'not_recorded').map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
         </label>
         <div className={styles.purchaseCalculated}>
           <span>Precio / saldo después</span>
