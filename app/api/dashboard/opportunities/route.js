@@ -198,43 +198,114 @@ function decisionFor(candidate, market) {
   const valuation = dynamicValuation(candidate, market.price);
   const s = candidate.snapshot;
 
+  const weights = {
+    valuation: 0.25,
+    fundamentals: 0.25,
+    risk: 0.20,
+    fit: 0.20,
+    thesis: 0.10,
+  };
+
+  const gates = {
+    valuation: 60,
+    fundamentals: 70,
+    risk: 60,
+    fit: 75,
+    thesis: 75,
+  };
+
+  const scores = {
+    valuation: valuation.score,
+    fundamentals: s.fundamentals,
+    risk: s.riskResilience,
+    fit: s.portfolioFit,
+    thesis: s.thesisStrength,
+  };
+
   const score =
-    valuation.score * 0.25 +
-    s.fundamentals * 0.25 +
-    s.riskResilience * 0.15 +
-    s.portfolioFit * 0.20 +
-    s.thesisStrength * 0.15;
+    scores.valuation * weights.valuation +
+    scores.fundamentals * weights.fundamentals +
+    scores.risk * weights.risk +
+    scores.fit * weights.fit +
+    scores.thesis * weights.thesis;
+
+  const failedGates = Object.entries(gates)
+    .filter(([key, minimum]) => scores[key] < minimum)
+    .map(([key, minimum]) => ({ key, minimum, score: scores[key] }));
+
+  const nearGate = Object.entries(gates)
+    .filter(([key, minimum]) => scores[key] >= minimum && scores[key] <= minimum + 5)
+    .map(([key, minimum]) => ({ key, minimum, score: scores[key] }));
+
+  const labels = {
+    valuation: 'valoración',
+    fundamentals: candidate.type === 'etf' ? 'calidad del vehículo' : 'fundamentales',
+    risk: 'riesgo / resiliencia',
+    fit: 'encaje con cartera',
+    thesis: 'tesis',
+  };
 
   let status = 'Mantener en estudio';
   let level = 'study';
-  let explanation = 'La tesis merece seguimiento, pero todavía no hay una combinación suficientemente clara de valoración, riesgo y encaje.';
+  let explanation = 'La tesis merece seguimiento, pero aún no supera todos los filtros obligatorios para incorporación.';
+  let mainBlocker = '';
 
-  if (score >= 78 && valuation.score >= 65 && s.portfolioFit >= 75) {
-    status = 'Candidato a incorporar';
+  if (failedGates.length === 0 && score >= 85) {
+    status = 'Candidato fuerte a incorporar';
     level = 'candidate';
-    explanation = 'Supera el filtro inicial de tesis, fundamentales, valoración, riesgo y encaje. El siguiente paso es definir tamaño y fuente de financiamiento; no es una orden de compra.';
-  } else if (valuation.score < 45 && s.thesisStrength >= 75) {
+    explanation = 'Supera todos los hard gates y además alcanza un puntaje total alto. Falta definir tamaño, fuente de financiamiento y efecto final sobre la cartera.';
+  } else if (failedGates.length === 0 && score >= 80) {
+    status = nearGate.length
+      ? 'Candidato a incorporar — con riesgo a vigilar'
+      : 'Candidato a incorporar';
+    level = 'candidate';
+    explanation = nearGate.length
+      ? `Supera todos los hard gates, pero ${nearGate.map((gate) => labels[gate.key]).join(', ')} está cerca del mínimo. Puede avanzar a análisis de tamaño, pero requiere vigilancia.`
+      : 'Supera todos los hard gates. Puede avanzar a análisis de tamaño y fuente de financiamiento; no es una orden de compra.';
+  } else if (failedGates.some((gate) => gate.key === 'valuation') && scores.thesis >= gates.thesis) {
     status = 'Esperar mejor valoración';
     level = 'wait';
-    explanation = 'La tesis sigue siendo interesante, pero la valoración actual no ofrece suficiente margen para justificar incorporación.';
-  } else if (score < 55 || s.thesisStrength < 60) {
+    mainBlocker = `Valoración ${scores.valuation}/100 < mínimo ${gates.valuation}/100`;
+    explanation = 'La tesis puede seguir siendo atractiva, pero el precio/valoración actual no ofrece suficiente margen para incorporación.';
+  } else if (failedGates.length > 0) {
+    status = 'Mantener en estudio';
+    level = 'study';
+    mainBlocker = failedGates
+      .map((gate) => `${labels[gate.key]} ${gate.score}/100 < mínimo ${gate.minimum}/100`)
+      .join(' · ');
+    explanation = `No puede incorporarse mientras falle un hard gate. Motivo principal: ${mainBlocker}.`;
+  } else if (score < 60) {
     status = 'Descartar por ahora';
     level = 'reject';
-    explanation = 'El balance entre valoración, fundamentales, riesgo y encaje no justifica mantenerlo como candidato activo en este momento.';
+    explanation = 'Aunque no exista un fallo crítico aislado, el balance global entre valoración, calidad, riesgo, encaje y tesis no justifica mantenerlo como candidato activo.';
   }
 
   return {
     status,
     level,
     score: Math.round(score),
+    rawScore: Number(score.toFixed(1)),
     explanation,
+    mainBlocker,
+    failedGates,
+    nearGate,
     estimatedForwardPE: valuation.estimatedForwardPE,
+    methodology: {
+      weights: {
+        valuation: 25,
+        fundamentals: 25,
+        risk: 20,
+        fit: 20,
+        thesis: 10,
+      },
+      gates,
+    },
     blocks: [
-      { key: 'valuation', label: 'Valoración', score: valuation.score, note: `P/E forward estimado ~${valuation.estimatedForwardPE.toFixed(1)}x` },
-      { key: 'fundamentals', label: candidate.type === 'etf' ? 'Calidad del vehículo' : 'Fundamentales', score: s.fundamentals, note: candidate.type === 'etf' ? 'Diversificación, liquidez, costo y estructura.' : 'Resultados, balance, crecimiento y visibilidad.' },
-      { key: 'risk', label: 'Riesgo / resiliencia', score: s.riskResilience, note: 'Mayor puntaje = mejor capacidad de soportar escenarios adversos.' },
-      { key: 'fit', label: 'Encaje cartera', score: s.portfolioFit, note: 'Función nueva, duplicación y compatibilidad con 60/20/15/5.' },
-      { key: 'thesis', label: 'Tesis', score: s.thesisStrength, note: 'Fuerza y vigencia estructural de la idea.' },
+      { key: 'valuation', label: 'Valoración', score: scores.valuation, gate: gates.valuation, weight: 25, note: `P/E forward estimado ~${valuation.estimatedForwardPE.toFixed(1)}x` },
+      { key: 'fundamentals', label: candidate.type === 'etf' ? 'Calidad del vehículo' : 'Fundamentales', score: scores.fundamentals, gate: gates.fundamentals, weight: 25, note: candidate.type === 'etf' ? 'Diversificación, liquidez, costo y estructura.' : 'Resultados, balance, crecimiento y visibilidad.' },
+      { key: 'risk', label: 'Riesgo / resiliencia', score: scores.risk, gate: gates.risk, weight: 20, note: 'Mayor puntaje = mejor capacidad de soportar escenarios adversos.' },
+      { key: 'fit', label: 'Encaje cartera', score: scores.fit, gate: gates.fit, weight: 20, note: 'Función nueva, duplicación y compatibilidad con 60/20/15/5.' },
+      { key: 'thesis', label: 'Tesis', score: scores.thesis, gate: gates.thesis, weight: 10, note: 'La tesis importa, pero no puede compensar valoración, riesgo o fundamentos deficientes.' },
     ],
   };
 }
@@ -268,7 +339,7 @@ export async function GET() {
 
   return NextResponse.json({
     updatedAt: new Date().toISOString(),
-    methodology: 'Decision Gate: valoración 25% + fundamentales 25% + riesgo 15% + encaje 20% + tesis 15%. No emite órdenes de compra.',
+    methodology: 'Decision Gate: valoración 25% + fundamentales 25% + riesgo 20% + encaje 20% + tesis 10%. Hard gates obligatorios: 60/70/60/75/75. No emite órdenes de compra.',
     candidates,
   });
 }
