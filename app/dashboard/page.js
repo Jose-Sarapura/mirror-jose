@@ -15,6 +15,7 @@ import OpportunityRadar from './components/OpportunityRadar';
 import PortfolioHealthGate from './components/PortfolioHealthGate';
 import RealExposure from './components/RealExposure';
 import DisciplineMode from './components/DisciplineMode';
+import DecisionJournal from './components/DecisionJournal';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -262,6 +263,7 @@ export default function DashboardPage() {
         <section className={styles.pageSection}>
           <div className={styles.pageTitle}><p className={styles.kicker}>Mirror Intelligence</p><h2>Qué significan tus números</h2><span>Interpretación automática según tu estrategia y costo de entrada.</span></div>
           <DisciplineMode portfolio={portfolio} />
+          <DecisionJournal portfolio={portfolio} />
           <PortfolioHealthGate portfolio={portfolio} />
           <RealExposure portfolio={portfolio} />
 
