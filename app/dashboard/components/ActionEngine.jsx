@@ -77,7 +77,7 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
           <p className={styles.kicker}>Motor de Acción</p>
           <h2>Qué hacer con el próximo aporte</h2>
           <span>
-            Mirror combina asignación, hard gates, concentración y oportunidades antes de proponer un destino.
+            Distribuye el próximo aporte dentro de Racional 60/20/15/5. BTC y ETH quedan fuera hasta definir una estrategia cripto específica.
           </span>
         </div>
         <span className={styles.actionEngineBadge}><Icon name="target" size={15} /> Plan según tus reglas</span>
@@ -205,9 +205,9 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
         <div>
           <Icon name="shield" size={16} />
           <span>
-            <strong>Importante:</strong> “complemento” no significa que el activo esté infraponderado.
-            Puede recibir una fracción del aporte solo para mantenerse cerca de su objetivo después de que aumenta el patrimonio total.
-            Los montos en USD y participaciones son estimaciones al precio y tipo de cambio actuales.
+            <strong>Importante:</strong> este motor administra solo la cartera principal Racional.
+            “Complemento” no significa que un activo esté infraponderado; puede recibir una fracción solo para mantenerse cerca de su objetivo.
+            BTC y ETH no reciben aportes desde este motor mientras no definamos tesis, límite y porcentaje estratégico.
           </span>
         </div>
         <button type="button" onClick={registerPlan}>
