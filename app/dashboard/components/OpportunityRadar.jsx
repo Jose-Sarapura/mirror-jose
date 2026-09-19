@@ -102,10 +102,21 @@ export default function OpportunityRadar() {
 
                 <p className={styles.opportunityRole}>{candidate.role}</p>
 
-                <div className={styles.decisionStatusBox}>
-                  <span>Estado de decisión</span>
-                  <strong>{candidate.decisionStatus}</strong>
-                  <small>{candidate.decisionNote}</small>
+                <div className={
+                  candidate.decision.level === 'candidate'
+                    ? styles.decisionCandidate
+                    : candidate.decision.level === 'wait'
+                      ? styles.decisionWait
+                      : candidate.decision.level === 'reject'
+                        ? styles.decisionReject
+                        : styles.decisionStatusBox
+                }>
+                  <div className={styles.decisionTitleRow}>
+                    <span>Estado de decisión</span>
+                    <b>{candidate.decision.score}/100</b>
+                  </div>
+                  <strong>{candidate.decision.status}</strong>
+                  <small>{candidate.decision.explanation}</small>
                 </div>
 
                 <div className={styles.opportunityMetrics}>
@@ -129,18 +140,25 @@ export default function OpportunityRadar() {
                   <small>Comparar con: {candidate.compareWith}</small>
                 </div>
 
-                <div className={styles.decisionGateMini}>
-                  <span><Icon name="check" size={14} /> Función definida</span>
-                  <span><Icon name="chart" size={14} /> Valoración: pendiente</span>
-                  <span><Icon name="shield" size={14} /> Fundamentales y riesgo: pendientes</span>
+                <div className={styles.decisionBlocks}>
+                  {candidate.decision.blocks.map((block) => (
+                    <div key={block.key}>
+                      <span>{block.label}</span>
+                      <strong>{Math.round(block.score)}/100</strong>
+                      <div><i style={{ width: `${Math.max(0, Math.min(100, block.score))}%` }} /></div>
+                    </div>
+                  ))}
                 </div>
+                <p className={styles.decisionMethod}>
+                  Datos fundamentales al {new Date(candidate.fundamentalsUpdatedAt).toLocaleDateString('es-CL')} · {candidate.sourceLabel}
+                </p>
               </article>
             ))}
           </div>
 
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
-            <span><strong>Regla Mirror:</strong> una caída solo genera una alerta de precio. Un activo solo puede pasar a “candidato a incorporar” después de validar valoración, fundamentales, tesis, riesgo y encaje con la cartera 60/20/15/5.</span>
+            <span><strong>Regla Mirror:</strong> la conclusión sale de 5 bloques: valoración 25%, fundamentales/calidad 25%, riesgo 15%, encaje con cartera 20% y tesis 15%. “Candidato a incorporar” significa que supera el filtro inicial; todavía falta decidir porcentaje y fuente de financiamiento.</span>
           </div>
         </>
       )}
