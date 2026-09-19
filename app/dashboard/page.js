@@ -6,7 +6,7 @@ import { MIRROR_DEFAULTS } from '../lib/mirror-config';
 import DashboardShell from './components/DashboardShell';
 import AllocationChart from './components/AllocationChart';
 import AssetCard from './components/AssetCard';
-import ContributionSimulator from './components/ContributionSimulator';
+import ActionEngine from './components/ActionEngine';
 import ProjectionChart from './components/ProjectionChart';
 import Icon from './components/Icon';
 import PurchaseRegistrar from './components/PurchaseRegistrar';
@@ -215,7 +215,7 @@ export default function DashboardPage() {
             <div className={styles.assetGrid}>{portfolio.assets.map((asset) => <AssetCard key={asset.ticker} asset={asset} />)}</div>
           </section>
 
-          <ContributionSimulator portfolio={portfolio} />
+          <ActionEngine portfolio={portfolio} initialAmount={monthlyContributionCLP} />
 
           <section className={styles.mirrorBrief}>
             <div className={styles.mirrorAvatar}>M</div>
