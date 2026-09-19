@@ -1630,3 +1630,304 @@
 .overlapTickers span {
   color: #aab6c5;
 }
+
+
+/* V3 Discipline Mode / Risk Constitution */
+.disciplinePanel {
+  margin-bottom: 16px;
+  padding: 24px;
+  border: 1px solid rgba(243,184,91,.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(243,184,91,.035), rgba(112,167,255,.02)),
+    var(--panel);
+}
+.disciplineStatusGood,
+.disciplineStatusWarning,
+.disciplineStatusBlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+}
+.disciplineStatusGood {
+  border: 1px solid rgba(40,217,167,.2);
+  background: rgba(40,217,167,.08);
+  color: #65e4bf;
+}
+.disciplineStatusWarning {
+  border: 1px solid rgba(243,184,91,.24);
+  background: rgba(243,184,91,.08);
+  color: #efc77f;
+}
+.disciplineStatusBlock {
+  border: 1px solid rgba(255,111,125,.24);
+  background: rgba(255,111,125,.08);
+  color: #ff9aa7;
+}
+.disciplineSummary {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.disciplineSummary article {
+  padding: 14px 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+.disciplineSummary span,
+.disciplineSummary strong,
+.disciplineSummary small { display: block; }
+.disciplineSummary span {
+  color: var(--muted);
+  font-size: 8px;
+}
+.disciplineSummary strong {
+  margin-top: 6px;
+  font-size: 15px;
+}
+.disciplineSummary small {
+  margin-top: 5px;
+  color: #929eac;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.disciplineGrid {
+  display: grid;
+  grid-template-columns: 1.3fr .7fr;
+  gap: 12px;
+}
+.disciplineActive,
+.disciplinePrinciple {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.018);
+}
+.disciplineSectionHead span,
+.disciplineSectionHead strong {
+  display: block;
+}
+.disciplineSectionHead span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.disciplineSectionHead strong {
+  margin-top: 4px;
+  font-size: 13px;
+}
+.disciplineAlertList {
+  display: grid;
+  gap: 9px;
+  margin-top: 13px;
+}
+.disciplineWarning,
+.disciplineBlock {
+  padding: 12px;
+  border-radius: 12px;
+}
+.disciplineWarning {
+  border: 1px solid rgba(243,184,91,.20);
+  background: rgba(243,184,91,.045);
+}
+.disciplineBlock {
+  border: 1px solid rgba(255,111,125,.20);
+  background: rgba(255,111,125,.045);
+}
+.disciplineWarning > div,
+.disciplineBlock > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.disciplineWarning span,
+.disciplineBlock span {
+  color: #c7d1dd;
+  font-size: 9px;
+  font-weight: 800;
+}
+.disciplineWarning strong,
+.disciplineBlock strong {
+  font-size: 10px;
+}
+.disciplineWarning small,
+.disciplineBlock small {
+  display: block;
+  margin-top: 4px;
+  color: #8f9bad;
+  font-size: 7px;
+}
+.disciplineWarning p,
+.disciplineBlock p {
+  margin: 7px 0 0;
+  color: #9ca8b7;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.disciplineNoAlerts {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid rgba(40,217,167,.16);
+  border-radius: 12px;
+  background: rgba(40,217,167,.04);
+}
+.disciplineNoAlerts strong,
+.disciplineNoAlerts span { display: block; }
+.disciplineNoAlerts strong { font-size: 9px; }
+.disciplineNoAlerts span {
+  margin-top: 4px;
+  color: #8f9dad;
+  font-size: 8px;
+}
+.candidateBlocks {
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.candidateBlocks > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.candidateBlocks > div {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 0;
+}
+.candidateBlocks strong { font-size: 9px; }
+.candidateBlocks p {
+  margin: 0;
+  color: #99a6b5;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.disciplinePrinciple > span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.disciplinePrinciple blockquote {
+  margin: 13px 0 10px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(243,184,91,.45);
+  color: #e8eef8;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.disciplinePrinciple p {
+  margin: 0;
+  color: #93a0b0;
+  font-size: 8px;
+  line-height: 1.55;
+}
+.disciplineFlow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.disciplineFlow span {
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.03);
+  color: #aab6c4;
+  font-size: 7px;
+  font-weight: 700;
+}
+.disciplineFlow i {
+  color: #637187;
+  font-style: normal;
+  font-size: 8px;
+}
+.constitutionDetails {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.constitutionDetails summary {
+  padding-top: 12px;
+  color: #bdc8d5;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.constitutionGrid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 8px;
+  margin-top: 11px;
+}
+.constitutionGrid article {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 9px;
+  align-items: start;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.015);
+}
+.constitutionGrid b {
+  color: #789fd9;
+  font-size: 11px;
+}
+.constitutionGrid strong {
+  display: block;
+  font-size: 9px;
+}
+.constitutionGrid p {
+  margin: 5px 0 0;
+  color: #8f9cad;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.constitutionGrid article > span {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(112,167,255,.07);
+  color: #9fc0f8;
+  font-size: 7px;
+  font-weight: 800;
+}
+.thresholdNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  color: #8e9bac;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.thresholdNote strong { color: #cbd6e3; }
+
+@media (max-width: 1000px) {
+  .disciplineSummary { grid-template-columns: repeat(2,1fr); }
+  .disciplineGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .disciplinePanel { padding: 18px; }
+  .disciplineSummary { grid-template-columns: 1fr 1fr; }
+  .constitutionGrid { grid-template-columns: 1fr; }
+}
