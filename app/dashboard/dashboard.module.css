@@ -2509,3 +2509,25 @@
   .actionFooter { flex-direction: column; align-items: stretch; }
   .actionMetrics { grid-template-columns: 1fr; }
 }
+
+
+/* V3 Action Engine clarity */
+.actionAllocationMoney small {
+  display: block;
+  margin-top: 7px;
+  color: #8f9cad;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.actionAllocationMoney small b {
+  color: #dce6f0;
+  font-weight: 800;
+}
+.actionAllocationReason {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+  color: #91a0b0;
+  font-size: 8px;
+  line-height: 1.5;
+}
