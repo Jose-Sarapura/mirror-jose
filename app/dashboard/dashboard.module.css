@@ -2189,3 +2189,323 @@
   .decisionWide { grid-column: auto; }
   .decisionReviewBar { grid-template-columns: 1fr; }
 }
+
+
+/* V3 Action Engine */
+.actionEngine {
+  margin-top: 28px;
+  padding: 26px;
+  border: 1px solid rgba(40,217,167,.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(125deg, rgba(15,34,33,.88), rgba(13,20,28,.94)),
+    var(--panel);
+  box-shadow: 0 24px 70px rgba(0,0,0,.18);
+}
+.actionEngineHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.actionEngineHeader h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  letter-spacing: -.035em;
+}
+.actionEngineHeader > div > span {
+  display: block;
+  margin-top: 6px;
+  color: #99a6b5;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.actionEngineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(40,217,167,.16);
+  border-radius: 999px;
+  background: rgba(40,217,167,.06);
+  color: #7be4c5;
+  font-size: 8px;
+  font-weight: 900;
+}
+.actionHero {
+  display: grid;
+  grid-template-columns: 1.35fr .65fr;
+  gap: 14px;
+}
+.actionHeroMain,
+.actionAmountBox {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.018);
+}
+.actionHeroMain > span,
+.actionAmountBox > span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.actionHeroMain h3 {
+  margin: 7px 0 7px;
+  font-size: 20px;
+  letter-spacing: -.03em;
+}
+.actionHeroMain p {
+  margin: 0;
+  color: #9da9b7;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.actionAmountBox strong {
+  display: block;
+  margin: 7px 0 10px;
+  font-size: 20px;
+}
+.actionAmountButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.actionAmountButtons button,
+.actionAmountBox input {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255,255,255,.025);
+  color: #b9c5d2;
+  font-size: 8px;
+  font-weight: 800;
+}
+.actionAmountButtons button {
+  padding: 0 9px;
+  cursor: pointer;
+}
+.actionAmountBox input {
+  width: 100%;
+  margin-top: 7px;
+  padding: 0 10px;
+  outline: none;
+}
+.actionAmountActive {
+  border-color: rgba(40,217,167,.34) !important;
+  background: rgba(40,217,167,.10) !important;
+  color: #6fe2c0 !important;
+}
+
+.actionAllocations {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.actionAllocation,
+.actionAllocationPrimary {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.015);
+}
+.actionAllocationPrimary {
+  border-color: rgba(40,217,167,.22);
+  background: rgba(40,217,167,.045);
+}
+.actionAllocation > div:first-child,
+.actionAllocationPrimary > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.actionAllocation > div:first-child span,
+.actionAllocationPrimary > div:first-child span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.actionAllocation > div:first-child strong,
+.actionAllocationPrimary > div:first-child strong {
+  font-size: 13px;
+}
+.actionAllocationMoney {
+  margin-top: 12px;
+}
+.actionAllocationMoney strong,
+.actionAllocationMoney span {
+  display: block;
+}
+.actionAllocationMoney strong { font-size: 17px; }
+.actionAllocationMoney span {
+  margin-top: 3px;
+  color: #8492a4;
+  font-size: 8px;
+}
+.actionAllocationWeights {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  color: #8f9cad;
+  font-size: 8px;
+}
+.actionAllocationWeights b { color: #dce5ef; }
+.actionAllocationWeights i {
+  color: #657488;
+  font-style: normal;
+}
+.actionAllocationWeights small {
+  margin-left: auto;
+  color: #748397;
+  font-size: 7px;
+}
+
+.actionMetrics {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.actionMetrics article {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(0,0,0,.12);
+}
+.actionMetrics span,
+.actionMetrics strong,
+.actionMetrics small { display: block; }
+.actionMetrics span { color: var(--muted); font-size: 8px; }
+.actionMetrics strong { margin-top: 6px; font-size: 13px; }
+.actionMetrics small {
+  margin-top: 4px;
+  color: #8f9dad;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.actionRulesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+.actionRulesGrid > article {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.015);
+}
+.actionSectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.actionSectionTitle span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.actionSectionTitle strong { font-size: 10px; }
+.actionBlockedList,
+.actionOpportunityList {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.actionBlockedList > div,
+.actionOpportunityList > div {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.02);
+}
+.actionBlockedList strong,
+.actionOpportunityList strong { font-size: 9px; }
+.actionBlockedList p,
+.actionOpportunityList p {
+  margin: 5px 0 0;
+  color: #8f9dad;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.actionOpportunityList > div > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.actionOpportunityReady,
+.actionOpportunityBlocked {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 800;
+}
+.actionOpportunityReady {
+  background: rgba(40,217,167,.08);
+  color: #6fe0bf;
+}
+.actionOpportunityBlocked {
+  background: rgba(243,184,91,.08);
+  color: #efc77f;
+}
+.actionEmptyText {
+  margin: 10px 0 0;
+  color: #7e8b9c;
+  font-size: 8px;
+}
+
+.actionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+.actionFooter > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #8f9dad;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.actionFooter > div strong { color: #cbd6e2; }
+.actionFooter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  border: 1px solid rgba(112,167,255,.18);
+  border-radius: 10px;
+  background: rgba(112,167,255,.06);
+  color: #afc9f5;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 950px) {
+  .actionHero,
+  .actionRulesGrid { grid-template-columns: 1fr; }
+  .actionAllocations { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .actionEngine { padding: 18px; }
+  .actionEngineHeader,
+  .actionFooter { flex-direction: column; align-items: stretch; }
+  .actionMetrics { grid-template-columns: 1fr; }
+}
