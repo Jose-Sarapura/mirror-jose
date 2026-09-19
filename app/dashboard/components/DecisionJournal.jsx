@@ -169,9 +169,9 @@ export default function DecisionJournal({ portfolio }) {
           <small>Deben tener evidencia explícita</small>
         </article>
         <article>
-          <span>Revisiones pendientes</span>
+          <span>Revisiones programadas</span>
           <strong>{summary.pending}</strong>
-          <small>{summary.overdue ? `${summary.overdue} vencida(s)` : 'Ninguna vencida'}</small>
+          <small>{summary.overdue ? `${summary.overdue} vencida(s)` : '0 vencidas'}</small>
         </article>
         <article>
           <span>Compras automáticas</span>
