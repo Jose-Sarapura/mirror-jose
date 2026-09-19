@@ -151,6 +151,15 @@ export default function RealExposure({ portfolio }) {
                         : styles.overlapLow
                   }>{overlap.level}</span>
                 </div>
+                <div className={styles.overlapMetric}>
+                  <span>Solapamiento visible</span>
+                  <strong>{pct(overlap.knownOverlap, 2)}</strong>
+                </div>
+                {overlap.sharedTickers?.length > 0 && (
+                  <small className={styles.overlapTickers}>
+                    Empresas detectadas: <span translate="no">{overlap.sharedTickers.join(' · ')}</span>
+                  </small>
+                )}
                 <p>{overlap.note}</p>
               </div>
             ))}
@@ -163,9 +172,9 @@ export default function RealExposure({ portfolio }) {
         <div>
           <strong>Lectura Mirror</strong>
           <p>
-            La cartera está diversificada por vehículos, pero sigue teniendo una concentración real importante en EE.UU. y tecnología.
-            Globales sí agrega diversificación, aunque parte de su 15% objetivo también vuelve a empresas estadounidenses.
-            Mirror debe vigilar especialmente la exposición efectiva a NVIDIA y la combinación VOO + SMH.
+            La cartera está diversificada por vehículos, pero mantiene una concentración real importante en EE.UU. y tecnología.
+            Globales agrega diversificación efectiva, aunque parte de su peso vuelve a empresas estadounidenses ya presentes en VOO.
+            Los porcentajes de solapamiento son mínimos conocidos basados en las posiciones visibles utilizadas; no representan el solapamiento total exacto entre todos los constituyentes.
           </p>
         </div>
       </div>
