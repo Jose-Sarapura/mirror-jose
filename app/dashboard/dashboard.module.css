@@ -1353,3 +1353,54 @@
 .mainBlocker {
   font-size: 8px;
 }
+
+
+/* V3 Health Gate readability */
+.healthCard {
+  padding: 20px;
+}
+.healthAllocation {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.healthAllocation span {
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: rgba(255,255,255,.018);
+}
+.healthBlocks {
+  gap: 12px;
+}
+.healthBlocks span {
+  color: #b7c2cf;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.healthBlocks strong {
+  color: #f1f5fb;
+  font-size: 9px;
+}
+.healthTrack {
+  height: 6px;
+  margin-top: 7px;
+}
+.healthTrack b {
+  height: 10px;
+}
+.healthDetails summary {
+  font-size: 9px;
+}
+.healthQuestions span {
+  font-size: 8px;
+}
+.healthQuestions p,
+.healthFacts span,
+.healthFacts small {
+  font-size: 8px;
+}
+@media (max-width: 540px) {
+  .healthAllocation {
+    grid-template-columns: 1fr;
+  }
+}
