@@ -122,17 +122,39 @@ export function buildActionPlan(portfolio, amountCLP, opportunityCandidates = []
   const allocations = projectedAssets
     .filter((asset) => asset.allocationCLP > 0)
     .sort((a, b) => b.allocationCLP - a.allocationCLP)
-    .map((asset, index) => ({
-      ticker: asset.ticker,
-      name: asset.name,
-      amountCLP: asset.allocationCLP,
-      shareOfContribution: amount ? (asset.allocationCLP / amount) * 100 : 0,
-      currentWeight: portfolio.assets.find((item) => item.ticker === asset.ticker)?.weight || 0,
-      projectedWeight: asset.projectedWeight,
-      targetWeight: asset.targetWeight,
-      priority: index === 0 ? 'Primera prioridad' : 'Complemento',
-      reason: asset.health?.contributionReason || 'Corrige la asignación objetivo.',
-    }));
+    .map((asset, index) => {
+      const currentWeight = portfolio.assets.find((item) => item.ticker === asset.ticker)?.weight || 0;
+      const isTrueGap = currentWeight < asset.targetWeight - 0.3;
+      const allocationType = isTrueGap ? 'gap' : 'maintenance';
+      const amountNative = asset.currency === 'USD'
+        ? asset.allocationCLP / Number(portfolio.fx || 1)
+        : asset.allocationCLP;
+      const estimatedShares = Number(asset.price || 0) > 0
+        ? amountNative / Number(asset.price)
+        : 0;
+
+      return {
+        ticker: asset.ticker,
+        name: asset.name,
+        currency: asset.currency,
+        price: asset.price,
+        amountCLP: asset.allocationCLP,
+        amountNative,
+        estimatedShares,
+        shareOfContribution: amount ? (asset.allocationCLP / amount) * 100 : 0,
+        currentWeight,
+        projectedWeight: asset.projectedWeight,
+        targetWeight: asset.targetWeight,
+        priority: index === 0 ? 'Primera prioridad' : 'Complemento',
+        allocationType,
+        actionLabel: isTrueGap
+          ? 'Corregir brecha'
+          : `Mantener cerca de ${asset.targetWeight}%`,
+        reason: isTrueGap
+          ? (asset.health?.contributionReason || 'Corrige una brecha real frente al objetivo.')
+          : `Este monto no busca sobreponderar ${asset.ticker}; evita que quede bajo ${asset.targetWeight}% después de aumentar el patrimonio con el nuevo aporte.`,
+      };
+    });
 
   const blockedAssets = assets
     .filter((asset) => asset.blockedReason)
@@ -172,11 +194,28 @@ export function buildActionPlan(portfolio, amountCLP, opportunityCandidates = []
   let rationale = 'No encontramos un destino habilitado que mejore la estrategia con las reglas actuales.';
 
   if (primary) {
-    headline = allocations.length === 1
-      ? `Dirigir el próximo aporte a ${primary.ticker}`
-      : `Priorizar ${primary.ticker} y completar con ${allocations.slice(1).map((item) => item.ticker).join(' + ')}`;
+    const secondary = allocations.slice(1);
+    const maintenance = secondary.filter((item) => item.allocationType === 'maintenance');
+    const gapSecondaries = secondary.filter((item) => item.allocationType === 'gap');
 
-    rationale = `${primary.ticker} recibe la mayor parte porque corrige la brecha estratégica sin violar los hard gates actuales.`;
+    if (allocations.length === 1) {
+      headline = primary.allocationType === 'gap'
+        ? `Priorizar ${primary.ticker} para corregir su brecha`
+        : `Aportar a ${primary.ticker} para mantenerlo cerca de ${primary.targetWeight}%`;
+    } else {
+      const parts = [`Priorizar ${primary.ticker}`];
+      if (gapSecondaries.length) {
+        parts.push(`corregir también ${gapSecondaries.map((item) => item.ticker).join(' + ')}`);
+      }
+      if (maintenance.length) {
+        parts.push(`usar ${maintenance.map((item) => item.ticker).join(' + ')} solo para mantener su objetivo`);
+      }
+      headline = parts.join('; ');
+    }
+
+    rationale = primary.allocationType === 'gap'
+      ? `${primary.ticker} recibe la mayor parte porque corrige una brecha real frente a su objetivo sin violar los hard gates actuales.`
+      : `${primary.ticker} recibe el aporte para mantenerse cerca de su objetivo después de aumentar el patrimonio total.`;
     if (smhBefore >= 20) {
       rationale += ' SMH no recibe dinero nuevo y su peso se diluye mediante aportes a otros activos.';
     }
