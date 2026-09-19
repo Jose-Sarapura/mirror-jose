@@ -96,6 +96,7 @@ export default function DecisionJournal({ portfolio }) {
 
   const assetOptions = [
     ...portfolio.assets.map((asset) => ({ ticker: asset.ticker, label: asset.name })),
+    ...(portfolio.cryptoAssets || []).map((asset) => ({ ticker: asset.ticker, label: `${asset.name} · Buda` })),
     { ticker: 'VST', label: 'Vistra Corp.' },
     { ticker: 'GRID', label: 'First Trust Smart Grid ETF' },
     { ticker: 'CCJ', label: 'Cameco Corp.' },
