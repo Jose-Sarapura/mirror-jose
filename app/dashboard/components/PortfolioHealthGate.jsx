@@ -5,8 +5,8 @@ import { portfolioHealthDecision } from '../lib/portfolio-health';
 import styles from '../dashboard.module.css';
 
 function statusClass(level) {
-  if (level === 'add') return styles.healthAdd;
-  if (level === 'watch') return styles.healthWatch;
+  if (level === 'priority') return styles.healthAdd;
+  if (level === 'later' || level === 'pause') return styles.healthWatch;
   if (level === 'review') return styles.healthReview;
   return styles.healthHold;
 }
@@ -37,15 +37,21 @@ export default function PortfolioHealthGate({ portfolio }) {
                 <span className={styles.watchTicker} translate="no">{asset.ticker}</span>
                 <strong>{health.category}</strong>
               </div>
-              <span className={statusClass(health.level)}>{health.status}</span>
+              <span className={statusClass(health.holdingLevel)}>{health.holdingStatus}</span>
             </div>
 
             <div className={styles.healthDecision}>
               <div>
-                <span>Estado actual</span>
+                <span>Estado de la inversión</span>
                 <strong>{health.score}/100</strong>
               </div>
-              <p>{health.reason}</p>
+              <p>{health.holdingReason}</p>
+            </div>
+
+            <div className={styles.healthContribution}>
+              <span>Prioridad de aportes</span>
+              <strong className={statusClass(health.contributionLevel)}>{health.contributionStatus}</strong>
+              <small>{health.contributionReason}</small>
             </div>
 
             <div className={styles.healthAllocation}>
