@@ -6,6 +6,7 @@ import { readDecisionLog } from '../lib/decision-log';
 import {
   decisionLearningSummary,
   learningClassification,
+  biasLabel,
 } from '../lib/decision-learning';
 import styles from '../dashboard.module.css';
 
@@ -98,6 +99,23 @@ export default function LearningLoop() {
         </article>
       </div>
 
+      <div className={styles.behaviorCheck}>
+        <div>
+          <p className={styles.kicker}>Chequeo conductual</p>
+          <strong>
+            {summary.topBias
+              ? `Sesgo más repetido al romper reglas: ${summary.topBias.label}`
+              : 'Aún no existe un patrón conductual suficiente'}
+          </strong>
+          <span>
+            {summary.topBias
+              ? `${summary.topBias.count} de ${summary.brokenWithBias} decisiones con ruptura de reglas y sesgo identificado · ${summary.topBias.shareOfBrokenWithBias.toFixed(0)}%.`
+              : 'Mirror empezará a detectar patrones cuando cerremos revisiones con información conductual.'}
+          </span>
+        </div>
+        <Icon name="brain" size={18} />
+      </div>
+
       <div className={styles.learningRule}>
         <Icon name="shield" size={17} />
         <div>
@@ -126,7 +144,9 @@ export default function LearningLoop() {
               </div>
               <strong>{entry.decision}</strong>
               <p>{entry.review.lesson}</p>
-              <small>{classification.explanation}</small>
+              <small>
+                Sesgo: {biasLabel(entry.review?.bias || entry.bias || 'not_recorded')} · {classification.explanation}
+              </small>
             </article>
           );
         }) : (
