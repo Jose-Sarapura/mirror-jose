@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { persistSettings, registerPurchase, removePurchase } from '../lib/settings';
 import { appendDecisionLog, removeDecisionBySource } from '../lib/decision-log';
+import { buildDecisionSnapshot } from '../lib/decision-learning';
 import { clp, nativeMoney, shares as formatShares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -70,6 +71,11 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         reviewDate: reviewDate.toISOString().slice(0, 10),
         source: 'purchase',
         sourceTransactionId: result.transaction.id,
+        snapshot: buildDecisionSnapshot(portfolio, ticker, {
+          purchaseAmount: Number(amount),
+          purchaseShares: Number(purchasedShares),
+          executionPrice: calculatedPrice,
+        }),
       });
       window.dispatchEvent(new Event('mirror-decision-log-updated'));
 
