@@ -17,6 +17,7 @@ import RealExposure from './components/RealExposure';
 import DisciplineMode from './components/DisciplineMode';
 import DecisionJournal from './components/DecisionJournal';
 import LearningLoop from './components/LearningLoop';
+import CryptoExposure from './components/CryptoExposure';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -82,7 +83,7 @@ export default function DashboardPage() {
   const goalCLP = Number(settings.goalCLP || MIRROR_DEFAULTS.goalCLP);
   const monthlyContributionCLP = Number(settings.monthlyContributionCLP || MIRROR_DEFAULTS.monthlyContributionCLP);
   const health = allocationHealth(portfolio.assets);
-  const goalProgress = Math.min(100, (portfolio.totalCLP / goalCLP) * 100);
+  const goalProgress = Math.min(100, (portfolio.totalInvestedCLP / goalCLP) * 100);
   const projectedGoalYear = estimateGoalYear({
     initialCLP: portfolio.totalCLP,
     monthlyCLP: monthlyContributionCLP,
@@ -98,6 +99,8 @@ export default function DashboardPage() {
     { label: 'Gran holgura', target: 600000000, age: 55 },
   ];
   const smh = portfolio.assets.find((asset) => asset.ticker === 'SMH');
+  const btc = portfolio.cryptoAssets?.find((asset) => asset.ticker === 'BTC');
+  const eth = portfolio.cryptoAssets?.find((asset) => asset.ticker === 'ETH');
   const smhStressImpact = smh ? smh.weight * 0.5 : 0;
 
   return (
@@ -112,13 +115,13 @@ export default function DashboardPage() {
                 <span className={styles.liveDot} />
                 <span>{marketState === 'REGULAR' ? 'Mercado abierto' : 'Valores actualizados'}</span>
               </div>
-              <p>Patrimonio total</p>
-              <h2>{clp.format(portfolio.totalCLP)}</h2>
+              <p>Patrimonio total invertido</p>
+              <h2>{clp.format(portfolio.totalInvestedCLP)}</h2>
               <div className={styles.heroReturns}>
-                <span className={portfolio.dayChangeCLP >= 0 ? styles.positiveBadge : styles.negativeBadge}>
-                  {percentage(portfolio.dayChangePct)} hoy · {clp.format(portfolio.dayChangeCLP)}
+                <span className={portfolio.totalInvestedDayChangeCLP >= 0 ? styles.positiveBadge : styles.negativeBadge}>
+                  {percentage(portfolio.totalInvestedDayChangePct)} 24 h · {clp.format(portfolio.totalInvestedDayChangeCLP)}
                 </span>
-                <span>Rentabilidad total <strong className={portfolio.totalReturnCLP >= 0 ? styles.positive : styles.negative}>{percentage(portfolio.totalReturnPct)}</strong></span>
+                <span>Rentabilidad total <strong className={portfolio.totalInvestedReturnCLP >= 0 ? styles.positive : styles.negative}>{percentage(portfolio.totalInvestedReturnPct)}</strong></span>
               </div>
             </div>
 
@@ -129,37 +132,37 @@ export default function DashboardPage() {
               <div>
                 <span>Meta patrimonial</span>
                 <strong>{clp.format(goalCLP)}</strong>
-                <small>Faltan {clp.format(Math.max(0, goalCLP - portfolio.totalCLP))}</small>
+                <small>Faltan {clp.format(Math.max(0, goalCLP - portfolio.totalInvestedCLP))}</small>
               </div>
             </div>
           </section>
 
           <section className={styles.walletSummary}>
             <article>
-              <span>Capital invertido</span>
+              <span>Racional · Cartera principal</span>
               <strong>{clp.format(portfolio.investedCLP)}</strong>
-              <small>VOO, SMH, BCH y Acciones Globales</small>
+              <small>{portfolio.racionalWeightTotalInvested.toFixed(1)}% del total · objetivo interno 60/20/15/5</small>
             </article>
             <article>
-              <span>Billetera USD</span>
-              <strong>{nativeMoney(portfolio.cashUSD, 'USD')}</strong>
-              <small>{clp.format(portfolio.cashUSDCLP)} al tipo de cambio actual</small>
+              <span>Buda · Cripto</span>
+              <strong>{clp.format(portfolio.cryptoInvestedCLP)}</strong>
+              <small>{portfolio.budaWeightTotalInvested.toFixed(1)}% del total · BTC + ETH</small>
             </article>
             <article>
-              <span>Billetera CLP</span>
-              <strong>{clp.format(portfolio.cashCLP)}</strong>
-              <small>Disponible para activos nacionales</small>
+              <span>Bitcoin</span>
+              <strong>{btc ? clp.format(btc.valueCLP) : '—'}</strong>
+              <small>{btc ? `${btc.weightWithinCrypto.toFixed(1)}% de Buda · ${btc.weightTotalInvested.toFixed(1)}% total` : 'Sin datos'}</small>
             </article>
             <article>
-              <span>Efectivo disponible</span>
-              <strong>{clp.format(portfolio.totalCashCLP)}</strong>
-              <small>Incluido en el patrimonio total</small>
+              <span>Ethereum</span>
+              <strong>{eth ? clp.format(eth.valueCLP) : '—'}</strong>
+              <small>{eth ? `${eth.weightWithinCrypto.toFixed(1)}% de Buda · ${eth.weightTotalInvested.toFixed(1)}% total` : 'Sin datos'}</small>
             </article>
           </section>
 
           <section className={styles.milestoneStrip}>
             {freedomMilestones.map((milestone) => {
-              const progress = Math.min(100, (portfolio.totalCLP / milestone.target) * 100);
+              const progress = Math.min(100, (portfolio.totalInvestedCLP / milestone.target) * 100);
               return (
                 <article key={milestone.target}>
                   <div><span>{milestone.label}</span><strong>{clp.format(milestone.target)}</strong></div>
@@ -181,18 +184,18 @@ export default function DashboardPage() {
             </article>
             <article className={styles.statCard}>
               <span className={styles.statIcon}><Icon name="clock" /></span>
-              <div><p>Meta estimada</p><strong>{projectedGoalYear ? Math.floor(projectedGoalYear) : '—'}</strong><small>Escenario base: 9% anual + {clp.format(monthlyContributionCLP)}/mes</small></div>
+              <div><p>Meta estimada Racional</p><strong>{projectedGoalYear ? Math.floor(projectedGoalYear) : '—'}</strong><small>9% anual + {clp.format(monthlyContributionCLP)}/mes · Buda aún no se proyecta</small></div>
             </article>
             <article className={styles.statCard}>
               <span className={styles.statIcon}><Icon name="chart" /></span>
-              <div><p>Capital registrado</p><strong>{clp.format(portfolio.totalCostBasisCLP)}</strong><small>Ganancia acumulada {clp.format(portfolio.totalReturnCLP)}</small></div>
+              <div><p>Costo invertido total</p><strong>{clp.format(portfolio.totalInvestedCostBasisCLP)}</strong><small>Resultado acumulado {clp.format(portfolio.totalInvestedReturnCLP)} · BTC incluye costo estimado</small></div>
             </article>
           </section>
 
           <div className={styles.twoColumn}>
             <section className={styles.panel}>
               <div className={styles.panelHeader}>
-                <div><p className={styles.kicker}>Asignación</p><h2>Actual vs. objetivo</h2></div>
+                <div><p className={styles.kicker}>Racional · Asignación</p><h2>Actual vs. objetivo 60/20/15/5</h2></div>
                 <button type="button" onClick={() => setActive('portfolio')}>Ver detalle <Icon name="arrow" size={16} /></button>
               </div>
               <AllocationChart assets={portfolio.assets} totalCLP={portfolio.investedCLP} />
@@ -200,18 +203,18 @@ export default function DashboardPage() {
 
             <section className={styles.panel}>
               <div className={styles.panelHeader}>
-                <div><p className={styles.kicker}>Camino al 2030</p><h2>Proyección patrimonial</h2></div>
+                <div><p className={styles.kicker}>Racional · Camino al 2030</p><h2>Proyección de cartera principal</h2></div>
                 <button type="button" onClick={() => setActive('projections')}>Escenarios <Icon name="arrow" size={16} /></button>
               </div>
               <ProjectionChart totalCLP={portfolio.totalCLP} monthlyContributionCLP={monthlyContributionCLP} endYear={2030} />
-              <div className={styles.chartLegend}><span>Conservador 5%</span><span>Base 9%</span><span>Optimista 13%</span></div>
+              <div className={styles.chartLegend}><span>Conservador 5%</span><span>Base 9%</span><span>Optimista 13%</span><span>Buda no incluido</span></div>
             </section>
           </div>
 
           <section className={styles.sectionBlock}>
             <div className={styles.sectionTitle}>
-              <div><p className={styles.kicker}>Tu portafolio</p><h2>Activos y posición estratégica</h2></div>
-              <span>{portfolio.assets.length} posiciones</span>
+              <div><p className={styles.kicker}>Racional</p><h2>Cartera principal y posición estratégica</h2></div>
+              <span>{portfolio.assets.length} posiciones · 60/20/15/5</span>
             </div>
             <div className={styles.assetGrid}>{portfolio.assets.map((asset) => <AssetCard key={asset.ticker} asset={asset} />)}</div>
           </section>
@@ -224,7 +227,7 @@ export default function DashboardPage() {
               <p className={styles.kicker}>Lectura Mirror</p>
               <h2>{primaryGap.ticker} continúa siendo la principal brecha del portafolio.</h2>
               <p>
-                Tu núcleo VOO representa {portfolio.assets.find((asset) => asset.ticker === 'VOO')?.weight.toFixed(1)}% y SMH {portfolio.assets.find((asset) => asset.ticker === 'SMH')?.weight.toFixed(1)}%. La decisión del próximo aporte debe priorizar la asignación objetivo, no el movimiento de una sola sesión.
+                Tu núcleo VOO representa {portfolio.assets.find((asset) => asset.ticker === 'VOO')?.weight.toFixed(1)}% y SMH {portfolio.assets.find((asset) => asset.ticker === 'SMH')?.weight.toFixed(1)}% dentro de Racional. Buda representa {portfolio.budaWeightTotalInvested.toFixed(1)}% del patrimonio total invertido y, por ahora, BTC/ETH permanecen fuera del motor de aportes hasta completar su estudio estratégico.
               </p>
             </div>
           </section>
