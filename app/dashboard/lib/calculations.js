@@ -56,6 +56,47 @@ export function mergePortfolioData(apiData, settings) {
     };
   });
 
+  const cryptoAssetsRaw = (apiData.cryptoAssets || []).map((marketAsset) => {
+    const override = settings?.crypto?.[marketAsset.ticker] || {};
+    const shares = numberOr(override.shares, marketAsset.shares);
+    const averageCost = numberOr(override.averageCost, marketAsset.averageCost);
+    const valueCLP = shares * marketAsset.price;
+    const previousValueCLP = shares * marketAsset.previousClose;
+    const costBasisCLP = shares * averageCost;
+
+    return {
+      ...marketAsset,
+      ...override,
+      shares,
+      averageCost,
+      valueNative: valueCLP,
+      previousValueNative: previousValueCLP,
+      valueCLP,
+      previousValueCLP,
+      costBasisNative: costBasisCLP,
+      costBasisCLP,
+      totalReturnNative: valueCLP - costBasisCLP,
+      totalReturnPct: costBasisCLP ? ((valueCLP / costBasisCLP) - 1) * 100 : 0,
+      dayChangeNative: valueCLP - previousValueCLP,
+    };
+  });
+
+  const cryptoInvestedCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.valueCLP, 0);
+  const previousCryptoInvestedCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
+  const cryptoCostBasisCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.costBasisCLP, 0);
+  const totalInvestedCLP = investedCLP + cryptoInvestedCLP;
+  const previousTotalInvestedCLP = previousInvestedCLP + previousCryptoInvestedCLP;
+  const totalInvestedCostBasisCLP = investedCostBasisCLP + cryptoCostBasisCLP;
+
+  const cryptoAssets = cryptoAssetsRaw.map((asset) => ({
+    ...asset,
+    weightWithinCrypto: cryptoInvestedCLP ? (asset.valueCLP / cryptoInvestedCLP) * 100 : 0,
+    weightTotalInvested: totalInvestedCLP ? (asset.valueCLP / totalInvestedCLP) * 100 : 0,
+  }));
+
+  const racionalWeightTotalInvested = totalInvestedCLP ? (investedCLP / totalInvestedCLP) * 100 : 0;
+  const budaWeightTotalInvested = totalInvestedCLP ? (cryptoInvestedCLP / totalInvestedCLP) * 100 : 0;
+
   return {
     ...apiData,
     assets: enrichedAssets,
