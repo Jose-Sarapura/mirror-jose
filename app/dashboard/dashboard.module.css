@@ -1228,3 +1228,34 @@
   .healthPanel { padding: 18px; }
   .healthQuestions { grid-template-columns: 1fr; }
 }
+
+
+/* V3 contribution priority */
+.healthContribution {
+  margin: -4px 0 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.018);
+}
+.healthContribution > span,
+.healthContribution > strong,
+.healthContribution > small {
+  display: block;
+}
+.healthContribution > span {
+  color: var(--muted);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.healthContribution > strong {
+  width: fit-content;
+  margin-top: 6px;
+}
+.healthContribution > small {
+  margin-top: 7px;
+  color: #909dad;
+  font-size: 7px;
+  line-height: 1.5;
+}
