@@ -7,6 +7,7 @@ import styles from '../dashboard.module.css';
 const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
+  currencyDisplay: 'code',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
@@ -56,7 +57,7 @@ export default function OpportunityRadar() {
         <div>
           <p className={styles.kicker}>Laboratorio de inversión</p>
           <h2>Motor de oportunidades</h2>
-          <span className={styles.panelSubtitle}>VST, GRID y CCJ están en observación; ninguno forma parte de la cartera todavía.</span>
+          <span className={styles.panelSubtitle}><span translate="no" className="notranslate">VST, GRID y CCJ</span> están en observación; ninguno forma parte de la cartera todavía.</span>
         </div>
         <span className={styles.reviewBadge}><Icon name="target" size={15} /> Máx. 3 candidatos</span>
       </div>
@@ -69,8 +70,8 @@ export default function OpportunityRadar() {
         <>
           <div className={styles.opportunitySummary}>
             <div>
-              <span>Lectura de hoy</span>
-              <strong>{priority ? `${priority.ticker}: ${priority.signal.status}` : 'Sin señales relevantes'}</strong>
+              <span>Mayor alerta de precio hoy</span>
+              <strong>{priority ? <><span translate="no" className="notranslate">{priority.ticker}</span>: {priority.signal.status}</> : 'Sin alertas relevantes'}</strong>
               <small>{priority?.signal?.note || 'El radar no detecta una condición de precio que requiera revisión.'}</small>
             </div>
             <div className={styles.cadenceBox}>
@@ -85,7 +86,7 @@ export default function OpportunityRadar() {
               <article className={styles.opportunityCard} key={candidate.ticker}>
                 <div className={styles.opportunityTop}>
                   <div>
-                    <span className={styles.watchTicker}>{candidate.ticker}</span>
+                    <span className={styles.watchTicker} translate="no">{candidate.ticker}</span>
                     <strong>{candidate.name}</strong>
                   </div>
                   <span className={
@@ -100,6 +101,12 @@ export default function OpportunityRadar() {
                 </div>
 
                 <p className={styles.opportunityRole}>{candidate.role}</p>
+
+                <div className={styles.decisionStatusBox}>
+                  <span>Estado de decisión</span>
+                  <strong>{candidate.decisionStatus}</strong>
+                  <small>{candidate.decisionNote}</small>
+                </div>
 
                 <div className={styles.opportunityMetrics}>
                   <div><span>Precio</span><strong>{Number.isFinite(candidate.price) ? money.format(candidate.price) : '—'}</strong></div>
@@ -123,9 +130,9 @@ export default function OpportunityRadar() {
                 </div>
 
                 <div className={styles.decisionGateMini}>
-                  <span><Icon name="check" size={14} /> Función clara</span>
-                  <span><Icon name="shield" size={14} /> Revisar riesgo</span>
-                  <span><Icon name="chart" size={14} /> Validar valoración</span>
+                  <span><Icon name="check" size={14} /> Función definida</span>
+                  <span><Icon name="chart" size={14} /> Valoración: pendiente</span>
+                  <span><Icon name="shield" size={14} /> Fundamentales y riesgo: pendientes</span>
                 </div>
               </article>
             ))}
@@ -133,7 +140,7 @@ export default function OpportunityRadar() {
 
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
-            <span>Una caída de precio solo activa una revisión. Para incorporar un activo deben seguir vigentes la tesis, los fundamentales, la valoración y el encaje con la cartera 60/20/15/5.</span>
+            <span><strong>Regla Mirror:</strong> una caída solo genera una alerta de precio. Un activo solo puede pasar a “candidato a incorporar” después de validar valoración, fundamentales, tesis, riesgo y encaje con la cartera 60/20/15/5.</span>
           </div>
         </>
       )}
