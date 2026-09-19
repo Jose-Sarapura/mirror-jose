@@ -9,6 +9,7 @@ import {
   readDecisionLog,
   removeDecisionLog,
   reviewDecision,
+  seedBaselineDecisions,
 } from '../lib/decision-log';
 import styles from '../dashboard.module.css';
 
@@ -44,11 +45,31 @@ export default function DecisionJournal({ portfolio }) {
   const refresh = () => setEntries(readDecisionLog(localStorage));
 
   useEffect(() => {
-    refresh();
+    let active = true;
+
+    const initialize = async () => {
+      let candidates = [];
+      try {
+        const response = await fetch('/api/dashboard/opportunities', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          candidates = data?.candidates || [];
+        }
+      } catch {}
+
+      const seeded = seedBaselineDecisions(localStorage, { portfolio, candidates });
+      if (active) setEntries(seeded);
+    };
+
+    initialize();
+
     const handler = () => refresh();
     window.addEventListener('mirror-decision-log-updated', handler);
-    return () => window.removeEventListener('mirror-decision-log-updated', handler);
-  }, []);
+    return () => {
+      active = false;
+      window.removeEventListener('mirror-decision-log-updated', handler);
+    };
+  }, [portfolio]);
 
   const summary = useMemo(() => {
     const pending = entries.filter((entry) => entry.reviewStatus !== 'reviewed').length;
@@ -246,6 +267,7 @@ export default function DecisionJournal({ portfolio }) {
                 <span className={styles.decisionType}>{typeLabel(entry.type)}</span>
                 {entry.asset && <b translate="no">{entry.asset}</b>}
                 {entry.source === 'purchase' && <em>Automática</em>}
+                {entry.source === 'baseline' && <em>Base V3</em>}
               </div>
               <time>{new Date(`${entry.date}T12:00:00`).toLocaleDateString('es-CL')}</time>
             </div>
@@ -286,7 +308,7 @@ export default function DecisionJournal({ portfolio }) {
               )}
             </div>
 
-            {entry.source !== 'purchase' && (
+            {entry.source === 'manual' && (
               <button className={styles.decisionDelete} type="button" onClick={() => handleDelete(entry)}>Eliminar registro</button>
             )}
           </article>
