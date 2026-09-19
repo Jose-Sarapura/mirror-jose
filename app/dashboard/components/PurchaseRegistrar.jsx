@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { persistSettings, registerPurchase, removePurchase } from '../lib/settings';
+import { appendDecisionLog, removeDecisionBySource } from '../lib/decision-log';
 import { clp, nativeMoney, shares as formatShares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -56,6 +57,22 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         currency: asset.currency,
       });
       persist(result.settings);
+
+      const reviewDate = new Date(`${date}T12:00:00`);
+      reviewDate.setDate(reviewDate.getDate() + 90);
+      appendDecisionLog(localStorage, {
+        type: 'buy',
+        asset: ticker,
+        date,
+        decision: `Comprar ${ticker}`,
+        reason: `Compra ejecutada desde Mirror. Peso previo ${asset.weight.toFixed(1)}% vs objetivo ${asset.targetWeight}%.`,
+        evidence: `Monto ${nativeMoney(Number(amount), asset.currency)} · ${formatShares(Number(purchasedShares))} participaciones · precio ${nativeMoney(calculatedPrice, asset.currency)}.`,
+        reviewDate: reviewDate.toISOString().slice(0, 10),
+        source: 'purchase',
+        sourceTransactionId: result.transaction.id,
+      });
+      window.dispatchEvent(new Event('mirror-decision-log-updated'));
+
       const balance = asset.currency === 'USD' ? result.settings.cashUSD : result.settings.cashCLP;
       setMessage(
         `${ticker} actualizado: ${formatShares(result.settings.assets[ticker].shares)} participaciones · promedio ${nativeMoney(result.settings.assets[ticker].averageCost, asset.currency)} · billetera ${nativeMoney(balance, asset.currency)}.`,
@@ -70,7 +87,9 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const handleRemove = (transactionId) => {
     const nextSettings = removePurchase(settings, transactionId);
     persist(nextSettings);
-    setMessage('Compra eliminada, posición recalculada y saldo devuelto a la billetera.');
+    removeDecisionBySource(localStorage, transactionId);
+    window.dispatchEvent(new Event('mirror-decision-log-updated'));
+    setMessage('Compra eliminada, posición recalculada, saldo devuelto a la billetera y registro de decisión asociado eliminado.');
     setError('');
   };
 
