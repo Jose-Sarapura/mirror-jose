@@ -8,6 +8,7 @@ const NAV = [
   { key: 'overview', label: 'Inicio', icon: 'home' },
   { key: 'portfolio', label: 'Portafolio', icon: 'portfolio' },
   { key: 'intelligence', label: 'Inteligencia', icon: 'brain' },
+  { key: 'opportunities', label: 'Oportunidades', icon: 'target' },
   { key: 'projections', label: 'Proyecciones', icon: 'chart' },
   { key: 'settings', label: 'Config.', icon: 'settings' },
 ];
