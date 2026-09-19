@@ -33,6 +33,7 @@ function normalize(entries) {
       reviewNote: entry.reviewNote || '',
       source: entry.source || 'manual',
       sourceTransactionId: entry.sourceTransactionId || '',
+      bias: entry.bias || '',
       snapshot: entry.snapshot || null,
       review: entry.review || null,
       reviewedAt: entry.reviewedAt || '',
@@ -72,6 +73,7 @@ export function appendDecisionLog(storage, entry) {
     reviewNote: entry.reviewNote || '',
     source: entry.source || 'manual',
     sourceTransactionId: entry.sourceTransactionId || '',
+    bias: entry.bias || '',
     snapshot: entry.snapshot || null,
     review: entry.review || null,
     reviewedAt: entry.reviewedAt || '',
@@ -99,12 +101,14 @@ export function reviewDecision(storage, decisionId, reviewInput) {
         process: 'respected',
         outcome: 'too_early',
         thesis: 'not_applicable',
+        bias: 'not_recorded',
         lesson: String(reviewInput || '').trim(),
       }
     : {
         process: reviewInput?.process || 'respected',
         outcome: reviewInput?.outcome || 'too_early',
         thesis: reviewInput?.thesis || 'not_applicable',
+        bias: reviewInput?.bias || 'not_recorded',
         lesson: String(reviewInput?.lesson || '').trim(),
       };
 
