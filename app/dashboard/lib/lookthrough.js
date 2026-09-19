@@ -180,26 +180,71 @@ export function calculateLookthrough(portfolio) {
   const technology = sectorExposure.Tecnología || 0;
   const largestCompany = companies[0] || null;
 
+  const assetMap = Object.fromEntries(portfolio.assets.map((asset) => [asset.ticker, asset]));
+
+  function knownPairOverlap(leftTicker, rightTicker) {
+    const leftSnapshot = LOOKTHROUGH_SNAPSHOTS[leftTicker];
+    const rightSnapshot = LOOKTHROUGH_SNAPSHOTS[rightTicker];
+    const leftAsset = assetMap[leftTicker];
+    const rightAsset = assetMap[rightTicker];
+
+    if (!leftSnapshot || !rightSnapshot || !leftAsset || !rightAsset) {
+      return { weight: 0, shared: [] };
+    }
+
+    const shared = Object.keys(leftSnapshot.companies || {})
+      .filter((ticker) => rightSnapshot.companies?.[ticker])
+      .map((ticker) => {
+        const leftCompany = leftSnapshot.companies[ticker];
+        const rightCompany = rightSnapshot.companies[ticker];
+        const leftContribution = Number(leftAsset.weight || 0) * (leftCompany.weight / 100);
+        const rightContribution = Number(rightAsset.weight || 0) * (rightCompany.weight / 100);
+        return {
+          ticker,
+          name: leftCompany.name || rightCompany.name,
+          duplicateContribution: Math.min(leftContribution, rightContribution),
+        };
+      })
+      .sort((a, b) => b.duplicateContribution - a.duplicateContribution);
+
+    return {
+      weight: shared.reduce((sum, item) => sum + item.duplicateContribution, 0),
+      shared,
+    };
+  }
+
+  const vooGlobal = knownPairOverlap('VOO', 'CFIETFGE');
+  const vooSmh = knownPairOverlap('VOO', 'SMH');
+  const smhGlobal = knownPairOverlap('SMH', 'CFIETFGE');
+
   const overlaps = [
     {
       pair: 'VOO ↔ Globales',
       level: 'Alto',
-      note: 'Comparten la mayoría de las mega-cap estadounidenses del top del índice.',
+      knownOverlap: vooGlobal.weight,
+      sharedTickers: vooGlobal.shared.slice(0, 5).map((item) => item.ticker),
+      note: 'Comparten varias mega-cap estadounidenses. El porcentaje mostrado es un mínimo conocido basado en las posiciones identificadas en ambos vehículos.',
     },
     {
       pair: 'VOO ↔ SMH',
       level: 'Alto',
-      note: 'SMH aumenta exposición a semiconductores que ya existen dentro de VOO, especialmente NVIDIA y Broadcom.',
+      knownOverlap: vooSmh.weight,
+      sharedTickers: vooSmh.shared.slice(0, 5).map((item) => item.ticker),
+      note: 'SMH refuerza semiconductores que ya existen en VOO. El solapamiento visible está dominado por NVIDIA y Broadcom.',
     },
     {
       pair: 'SMH ↔ Globales',
       level: 'Medio',
-      note: 'Comparten NVIDIA, TSMC y Broadcom, pero Globales aporta miles de empresas adicionales.',
+      knownOverlap: smhGlobal.weight,
+      sharedTickers: smhGlobal.shared.slice(0, 5).map((item) => item.ticker),
+      note: 'Comparten algunas grandes compañías de semiconductores, aunque Globales aporta miles de empresas adicionales.',
     },
     {
       pair: 'BCH ↔ resto',
       level: 'Bajo',
-      note: 'BCH aporta una exposición chilena y bancaria bastante distinta del núcleo internacional.',
+      knownOverlap: 0,
+      sharedTickers: [],
+      note: 'No detectamos empresas compartidas en los snapshots utilizados; BCH aporta una exposición chilena y bancaria distinta.',
     },
   ];
 
