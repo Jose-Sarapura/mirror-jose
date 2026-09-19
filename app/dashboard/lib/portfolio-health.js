@@ -139,40 +139,52 @@ export function portfolioHealthDecision(asset) {
   const gap = asset.targetWeight - asset.weight;
   const valuationAllowsNewMoney = scores.valuation >= gates.valuationForNewMoney;
 
-  let status = 'Mantener';
-  let level = 'hold';
-  let reason = 'La tesis y los hard gates siguen vigentes y el peso está razonablemente alineado.';
+  let holdingStatus = 'Mantener';
+  let holdingLevel = 'hold';
+  let holdingReason = 'La tesis y los hard gates siguen vigentes; el activo merece seguir formando parte de la cartera.';
+
+  let contributionStatus = 'Aportar para mantener objetivo';
+  let contributionLevel = 'normal';
+  let contributionReason = 'Puede recibir aportes cuando corresponda para conservar su porcentaje objetivo, sin desplazar activos con una brecha mayor.';
 
   if (failedCritical.length) {
-    status = scores.thesis < gates.thesis || scores.fundamentals < gates.fundamentals
-      ? 'Reevaluar'
-      : 'Mantener sin aumentar';
-    level = 'review';
-    reason = `Falla un hard gate: ${failedCritical.join(', ')}. El puntaje promedio no compensa ese problema.`;
+    holdingStatus = 'Reevaluar';
+    holdingLevel = 'review';
+    holdingReason = `Falla un hard gate: ${failedCritical.join(', ')}. El puntaje promedio no compensa ese problema.`;
+    contributionStatus = 'Pausar aportes';
+    contributionLevel = 'pause';
+    contributionReason = 'No destinar nuevo dinero hasta resolver el hard gate que falló.';
   } else if (asset.ticker === 'SMH' && asset.weight >= 19.5) {
-    status = 'Mantener sin aumentar';
-    level = 'watch';
-    reason = 'SMH está prácticamente en su límite estratégico de 20%; el riesgo de concentración pesa más que un puntaje alto.';
+    contributionStatus = 'Aportar después de corregir brechas';
+    contributionLevel = 'later';
+    contributionReason = 'SMH está prácticamente en su límite estratégico de 20%. Mantener la posición y volver a aportar solo si queda claramente bajo objetivo.';
   } else if (gap >= 0.6 && valuationAllowsNewMoney) {
-    status = 'Priorizar aportes';
-    level = 'add';
-    reason = `Está ${gap.toFixed(1)} puntos bajo su objetivo y todos los hard gates para nuevo dinero están aprobados.`;
+    contributionStatus = 'Priorizar aportes ahora';
+    contributionLevel = 'priority';
+    contributionReason = `Está ${gap.toFixed(1)} puntos bajo su objetivo y todos los hard gates para nuevo dinero están aprobados.`;
   } else if (gap >= 0.6 && !valuationAllowsNewMoney) {
-    status = 'Mantener en espera';
-    level = 'watch';
-    reason = 'Está bajo el objetivo, pero la valoración no supera el mínimo definido para destinar nuevo dinero.';
+    contributionStatus = 'Esperar mejor valoración';
+    contributionLevel = 'pause';
+    contributionReason = 'Está bajo el objetivo, pero la valoración no supera el mínimo definido para nuevo dinero.';
   } else if (asset.weight > asset.targetWeight + 0.3) {
-    status = 'Mantener sin aumentar';
-    level = 'watch';
-    reason = `Está ${(asset.weight - asset.targetWeight).toFixed(1)} puntos sobre su objetivo; nuevos aportes deben corregir otras brechas.`;
+    contributionStatus = 'Aportar después de corregir brechas';
+    contributionLevel = 'later';
+    contributionReason = `Está ${(asset.weight - asset.targetWeight).toFixed(1)} puntos sobre su objetivo. Primero corregir activos infraponderados; luego puede volver a recibir aportes para mantener la estrategia.`;
+  } else {
+    contributionStatus = 'Aportar para mantener objetivo';
+    contributionLevel = 'normal';
+    contributionReason = 'Está cerca de su objetivo. Puede recibir aportes cuando sea necesario para conservar la asignación, después de atender brechas más importantes.';
   }
 
   return {
     ...config,
     score,
-    status,
-    level,
-    reason,
+    holdingStatus,
+    holdingLevel,
+    holdingReason,
+    contributionStatus,
+    contributionLevel,
+    contributionReason,
     failedCritical,
     valuationAllowsNewMoney,
     blocks: [
