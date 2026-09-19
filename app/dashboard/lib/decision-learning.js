@@ -49,7 +49,7 @@ export function buildDecisionSnapshot(portfolio, assetTicker = '', extra = {}) {
   if (!portfolio) return null;
   const discipline = buildDisciplineState(portfolio);
   const asset = assetTicker
-    ? portfolio.assets.find((item) => item.ticker === assetTicker)
+    ? [...(portfolio.assets || []), ...(portfolio.cryptoAssets || [])].find((item) => item.ticker === assetTicker)
     : null;
 
   return {
@@ -68,6 +68,8 @@ export function buildDecisionSnapshot(portfolio, assetTicker = '', extra = {}) {
       weight: Number(asset.weight || 0),
       targetWeight: Number(asset.targetWeight || 0),
       totalReturnPct: Number(asset.totalReturnPct || 0),
+      platform: asset.platform || 'Racional',
+      weightTotalInvested: Number(asset.weightTotalInvested ?? asset.weight ?? 0),
     } : null,
     ...extra,
   };
