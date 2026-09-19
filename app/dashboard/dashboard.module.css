@@ -3272,3 +3272,151 @@
     padding-bottom: 62px;
   }
 }
+
+
+/* V3 BTC Health Gate */
+.btcHealthPanel {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid rgba(40,217,167,.14);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(40,217,167,.018), rgba(112,167,255,.018)),
+    var(--panel);
+}
+.btcHealthSignalGrid {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.btcHealthSignalGrid > article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.014);
+}
+.btcHealthSignalTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btcHealthSignalTop strong,
+.btcHealthSignalTop small { display: block; }
+.btcHealthSignalTop strong { font-size: 10px; }
+.btcHealthSignalTop small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+.btcHealthMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.btcHealthMeta span {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(112,167,255,.07);
+  color: #9eb9df;
+  font-size: 7px;
+  font-weight: 800;
+}
+.btcHealthSignalGrid p {
+  margin: 11px 0 0;
+  color: #98a5b4;
+  font-size: 8px;
+  line-height: 1.52;
+}
+.btcHealthUse {
+  display: block;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+  color: #c2ccd7;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.btcHealthRedundancy {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.btcHealthRedundancy > div {
+  padding: 12px;
+  border: 1px solid rgba(243,184,91,.12);
+  border-radius: 12px;
+  background: rgba(243,184,91,.025);
+}
+.btcHealthRedundancy strong,
+.btcHealthRedundancy span { display: block; }
+.btcHealthRedundancy strong { font-size: 9px; }
+.btcHealthRedundancy span {
+  margin-top: 6px;
+  color: #929fad;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.btcHealthStages {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.btcHealthStages article {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(0,0,0,.1);
+}
+.btcHealthStages span,
+.btcHealthStages strong { display: block; }
+.btcHealthStages span {
+  color: #b6c1cf;
+  font-size: 8px;
+  font-weight: 800;
+}
+.btcHealthStages strong {
+  margin-top: 7px;
+  font-size: 10px;
+}
+.btcHealthStages p {
+  margin: 6px 0 0;
+  color: #8795a6;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.btcHealthCurrent {
+  display: grid;
+  grid-template-columns: .85fr 1.4fr;
+  gap: 18px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px solid rgba(112,167,255,.14);
+  border-radius: 13px;
+  background: rgba(112,167,255,.025);
+}
+.btcHealthCurrent h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.btcHealthCurrent > p {
+  margin: 0;
+  color: #99a6b5;
+  font-size: 8px;
+  line-height: 1.5;
+}
+@media (max-width: 1050px) {
+  .btcHealthSignalGrid,
+  .btcHealthStages { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 760px) {
+  .btcHealthSignalGrid,
+  .btcHealthStages,
+  .btcHealthRedundancy,
+  .btcHealthCurrent { grid-template-columns: 1fr; }
+}
