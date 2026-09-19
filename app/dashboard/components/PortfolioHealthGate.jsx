@@ -57,6 +57,7 @@ export default function PortfolioHealthGate({ portfolio }) {
             <div className={styles.healthAllocation}>
               <span>Peso actual <strong>{asset.weight.toFixed(1)}%</strong></span>
               <span>Objetivo <strong>{asset.targetWeight}%</strong></span>
+              <span>Brecha <strong>{(asset.targetWeight - asset.weight).toFixed(1)} pp</strong></span>
             </div>
 
             <div className={styles.healthBlocks}>
@@ -65,7 +66,7 @@ export default function PortfolioHealthGate({ portfolio }) {
                 return (
                   <div key={block.key}>
                     <div>
-                      <span>{block.label}</span>
+                      <span>{block.label} · peso {block.weight}%</span>
                       <strong>{block.score}/100</strong>
                     </div>
                     <div className={styles.healthTrack}>
@@ -73,7 +74,7 @@ export default function PortfolioHealthGate({ portfolio }) {
                       <b style={{ left: `${block.gate}%` }} title={`Hard gate: ${block.gate}`} />
                     </div>
                     <small className={gatePassed ? styles.gatePass : styles.gateFail}>
-                      {gatePassed ? 'Gate aprobado' : `Gate no aprobado · mínimo ${block.gate}`}
+                      {gatePassed ? `✓ Cumple · mín. ${block.gate}` : `✕ No cumple · mín. ${block.gate}`}
                     </small>
                   </div>
                 );
@@ -114,7 +115,7 @@ export default function PortfolioHealthGate({ portfolio }) {
       <div className={styles.radarFooter}>
         <Icon name="info" size={16} />
         <span>
-          <strong>Hard gate:</strong> un puntaje total alto no puede compensar un deterioro crítico. Si fundamentos, riesgo, encaje o tesis caen bajo su mínimo, Mirror cambia la acción aunque el promedio siga siendo alto.
+          <strong>Regla Mirror:</strong> primero decide si el activo merece seguir en cartera; después decide si corresponde aportar ahora. Un score alto nunca compensa un hard gate crítico fallado.
         </span>
       </div>
     </section>
