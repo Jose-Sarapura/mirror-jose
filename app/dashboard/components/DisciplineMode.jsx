@@ -65,7 +65,7 @@ export default function DisciplineMode({ portfolio }) {
         <article>
           <span>SMH</span>
           <strong>{portfolio.assets.find((asset) => asset.ticker === 'SMH')?.weight.toFixed(1) || '—'}%</strong>
-          <small>Límite estratégico: {DISCIPLINE_THRESHOLDS.smhHardMax}%</small>
+          <small>Objetivo máximo: {DISCIPLINE_THRESHOLDS.smhTargetMax}% · revisar rebalanceo sobre {DISCIPLINE_THRESHOLDS.smhRebalanceReview}%</small>
         </article>
         <article>
           <span>Tecnología efectiva</span>
@@ -164,7 +164,7 @@ export default function DisciplineMode({ portfolio }) {
           <Icon name="info" size={15} />
           <span>
             Los umbrales de tecnología y empresa individual son <strong>alertas operativas iniciales</strong>, no órdenes automáticas de venta.
-            Solo se convierten en hard limits después de una revisión formal y consciente de la estrategia.
+            En SMH, superar 20% bloquea nuevos aportes; recién sobre 22% se revisa rebalanceo. Ningún umbral genera una venta automática.
           </span>
         </div>
       </details>
