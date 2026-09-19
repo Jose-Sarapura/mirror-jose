@@ -454,7 +454,7 @@ export default function DashboardPage() {
               <button type="button" className={styles.primaryButton} onClick={saveSettings}><Icon name={saved ? 'check' : 'edit'} size={17} /> {saved ? 'Guardado' : 'Guardar cambios'}</button>
               <button type="button" className={styles.secondaryButton} onClick={resetSettings}>Restaurar datos base</button>
             </div>
-            <p className={styles.settingsNote}><Icon name="info" size={16} /> Los datos se guardan en este dispositivo. Racional actualiza precios de mercado y BTC/ETH usan precios públicos de Buda.com. LTC no forma parte de Mirror.</p>
+            <p className={styles.settingsNote}><Icon name="info" size={16} /> Los datos se guardan en este dispositivo. Racional actualiza precios de mercado y BTC/ETH usan precios públicos de Buda.com.</p>
           </section>
         </section>
       )}
