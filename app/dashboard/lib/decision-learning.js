@@ -21,6 +21,22 @@ export const THESIS_OPTIONS = [
   { value: 'not_applicable', label: 'No aplica' },
 ];
 
+export const BIAS_OPTIONS = [
+  { value: 'none', label: 'Sin presión emocional relevante' },
+  { value: 'fomo', label: 'FOMO / miedo a quedar fuera' },
+  { value: 'fear', label: 'Miedo a perder' },
+  { value: 'revenge', label: 'Querer recuperar una pérdida' },
+  { value: 'buy_the_dip', label: 'Comprar solo porque cayó' },
+  { value: 'anchoring', label: 'Apego al precio de compra' },
+  { value: 'overconfidence', label: 'Exceso de confianza' },
+  { value: 'confirmation', label: 'Buscar solo evidencia que confirma mi idea' },
+  { value: 'not_recorded', label: 'No registrado' },
+];
+
+export function biasLabel(value) {
+  return BIAS_OPTIONS.find((item) => item.value === value)?.label || 'No registrado';
+}
+
 function allocationHealth(assets = []) {
   const deviation = assets.reduce(
     (sum, asset) => sum + Math.abs(Number(asset.weight || 0) - Number(asset.targetWeight || 0)),
@@ -131,6 +147,39 @@ export function decisionLearningSummary(entries = []) {
   const failures = reviewed.filter((entry) => learningClassification(entry).key === 'discipline_failure');
   const reinforced = reviewed.filter((entry) => learningClassification(entry).key === 'reinforce');
 
+  const effectiveBias = (entry) => {
+    const reviewedBias = entry.review?.bias;
+    if (reviewedBias && reviewedBias !== 'not_recorded') return reviewedBias;
+    if (entry.bias && entry.bias !== 'not_recorded') return entry.bias;
+    return '';
+  };
+
+  const biasedReviewed = reviewed.filter((entry) => {
+    const bias = effectiveBias(entry);
+    return bias && bias !== 'none';
+  });
+
+  const brokenWithBias = broken.filter((entry) => {
+    const bias = effectiveBias(entry);
+    return bias && bias !== 'none';
+  });
+
+  const biasCounts = brokenWithBias.reduce((acc, entry) => {
+    const bias = effectiveBias(entry);
+    acc[bias] = (acc[bias] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topBiasEntry = Object.entries(biasCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topBias = topBiasEntry
+    ? {
+        value: topBiasEntry[0],
+        label: biasLabel(topBiasEntry[0]),
+        count: topBiasEntry[1],
+        shareOfBrokenWithBias: brokenWithBias.length ? (topBiasEntry[1] / brokenWithBias.length) * 100 : 0,
+      }
+    : null;
+
   return {
     reviewed: reviewed.length,
     goodProcess: goodProcess.length,
@@ -140,6 +189,9 @@ export function decisionLearningSummary(entries = []) {
     goodBad: goodBad.length,
     failures: failures.length,
     reinforced: reinforced.length,
+    biasedReviewed: biasedReviewed.length,
+    brokenWithBias: brokenWithBias.length,
+    topBias,
     lessons: reviewed
       .filter((entry) => entry.review?.lesson)
       .sort((a, b) => new Date(b.reviewedAt || b.date).getTime() - new Date(a.reviewedAt || a.date).getTime()),
