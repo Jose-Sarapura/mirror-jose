@@ -89,7 +89,7 @@ function persistence(series, classifier, currentStatus) {
 async function fetchCoinMetrics() {
   const params = new URLSearchParams({
     assets: 'btc',
-    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur,SplyCur,SplyActPct1yr',
+    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur,SplyCur,SplyActPct1yr,SplyAct1Yr',
     frequency: '1d',
     start_time: daysAgo(125),
     paging_from: 'start',
@@ -112,7 +112,14 @@ async function fetchCoinMetrics() {
       const price = num(row.PriceUSD);
       const marketCap = num(row.CapMrktCurUSD);
       const mvrv = num(row.CapMVRVCur);
-      const active1yPct = num(row.SplyActPct1yr);
+      const supply = num(row.SplyCur);
+      const active1y = num(row.SplyAct1Yr ?? row.SplyAct1yr);
+      const directActive1yPct = num(row.SplyActPct1yr);
+      const active1yPct = Number.isFinite(directActive1yPct)
+        ? directActive1yPct
+        : (Number.isFinite(active1y) && Number.isFinite(supply) && supply > 0
+          ? (active1y / supply) * 100
+          : null);
       const realizedCap = Number.isFinite(marketCap) && Number.isFinite(mvrv) && mvrv !== 0
         ? marketCap / mvrv
         : null;
@@ -124,6 +131,9 @@ async function fetchCoinMetrics() {
         mvrv,
         realizedCap,
         active1yPct,
+        active1yPctMode: Number.isFinite(directActive1yPct)
+          ? 'direct'
+          : (Number.isFinite(active1yPct) ? 'derived' : 'unavailable'),
       };
     })
     .filter((row) => row.time && Number.isFinite(row.price))
@@ -283,7 +293,9 @@ export async function GET() {
           change30dPp: lthProxyChange30dPp,
           sourceMode: Number.isFinite(latest.active1yPct) ? 'proxy' : 'unavailable',
           sourceLabel: Number.isFinite(latest.active1yPct)
-            ? 'Coin Metrics Community · SplyActPct1yr (proxy, no LTH exacto)'
+            ? (latest.active1yPctMode === 'direct'
+              ? 'Coin Metrics Community · SplyActPct1yr (proxy, no LTH exacto)'
+              : 'Coin Metrics Community · SplyAct1Yr / SplyCur (proxy derivado, no LTH exacto)')
             : 'LTH exacto requiere fuente de cohortes',
           persistence: lthPersistence,
         },
