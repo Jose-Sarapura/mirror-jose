@@ -952,3 +952,104 @@
   line-height: 1.5;
 }
 .radarFooter strong { color: #d5dfed; }
+
+
+/* V3 Decision Gate */
+.decisionCandidate,
+.decisionWait,
+.decisionReject {
+  margin: 12px 0 14px;
+  padding: 12px;
+  border-radius: 12px;
+}
+.decisionCandidate {
+  border: 1px solid rgba(40,217,167,.22);
+  background: rgba(40,217,167,.055);
+}
+.decisionWait {
+  border: 1px solid rgba(243,184,91,.22);
+  background: rgba(243,184,91,.055);
+}
+.decisionReject {
+  border: 1px solid rgba(255,111,125,.20);
+  background: rgba(255,111,125,.045);
+}
+.decisionCandidate span,
+.decisionCandidate strong,
+.decisionCandidate small,
+.decisionWait span,
+.decisionWait strong,
+.decisionWait small,
+.decisionReject span,
+.decisionReject strong,
+.decisionReject small {
+  display: block;
+}
+.decisionCandidate strong,
+.decisionWait strong,
+.decisionReject strong {
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.decisionCandidate small,
+.decisionWait small,
+.decisionReject small {
+  margin-top: 5px;
+  color: #94a1b0;
+  font-size: 7px;
+  line-height: 1.5;
+}
+.decisionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.decisionTitleRow span {
+  color: var(--muted);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.decisionTitleRow b {
+  color: #dbe7f7;
+  font-size: 9px;
+}
+.decisionBlocks {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+.decisionBlocks > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+.decisionBlocks span {
+  color: #9ca8b7;
+  font-size: 8px;
+}
+.decisionBlocks strong {
+  font-size: 8px;
+}
+.decisionBlocks > div > div {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+}
+.decisionBlocks i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #72a7ff, #28d9a7);
+}
+.decisionMethod {
+  margin: 10px 0 0;
+  color: #758397;
+  font-size: 7px;
+  line-height: 1.45;
+}
