@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildActionPlan } from '../lib/action-engine';
 import { appendDecisionLog } from '../lib/decision-log';
+import { buildDecisionSnapshot } from '../lib/decision-learning';
 import { clp, nativeMoney, shares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -57,6 +58,12 @@ export default function ActionEngine({ portfolio, initialAmount = 200000 }) {
       evidence: `Aporte simulado ${clp.format(plan.amountCLP)}. Distribución: ${allocations || 'sin asignación'}. Salud de asignación ${plan.metrics.allocationHealthBefore}→${plan.metrics.allocationHealthAfter}. SMH ${plan.metrics.smhBefore.toFixed(1)}%→${plan.metrics.smhAfter.toFixed(1)}%. Tecnología ${plan.metrics.technologyBefore.toFixed(1)}%→${plan.metrics.technologyAfter.toFixed(1)}%.`,
       reviewDate: addDays(today, 30),
       source: 'manual',
+      snapshot: buildDecisionSnapshot(portfolio, '', {
+        plannedContributionCLP: plan.amountCLP,
+        plannedAllocationHealth: plan.metrics.allocationHealthAfter,
+        plannedSmhWeight: plan.metrics.smhAfter,
+        plannedTechnology: plan.metrics.technologyAfter,
+      }),
     });
     window.dispatchEvent(new Event('mirror-decision-log-updated'));
     setRegistered(true);
