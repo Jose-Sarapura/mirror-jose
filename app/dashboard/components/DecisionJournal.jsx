@@ -11,6 +11,13 @@ import {
   reviewDecision,
   seedBaselineDecisions,
 } from '../lib/decision-log';
+import {
+  buildDecisionSnapshot,
+  PROCESS_OPTIONS,
+  OUTCOME_OPTIONS,
+  THESIS_OPTIONS,
+  learningClassification,
+} from '../lib/decision-learning';
 import styles from '../dashboard.module.css';
 
 function today() {
@@ -40,7 +47,7 @@ export default function DecisionJournal({ portfolio }) {
     reviewDate: addDays(today(), 90),
   }));
   const [error, setError] = useState('');
-  const [reviewNotes, setReviewNotes] = useState({});
+  const [reviewDrafts, setReviewDrafts] = useState({});
 
   const refresh = () => setEntries(readDecisionLog(localStorage));
 
@@ -112,6 +119,7 @@ export default function DecisionJournal({ portfolio }) {
       ...form,
       ruleTitle: rule?.title || '',
       source: 'manual',
+      snapshot: buildDecisionSnapshot(portfolio, form.asset),
     });
 
     window.dispatchEvent(new Event('mirror-decision-log-updated'));
@@ -133,15 +141,27 @@ export default function DecisionJournal({ portfolio }) {
   };
 
   const handleReview = (entry) => {
-    const note = String(reviewNotes[entry.id] || '').trim();
-    if (!note) {
-      setError('Para cerrar una revisión, escribe qué aprendiste o si la decisión original sigue siendo válida.');
+    const draft = reviewDrafts[entry.id] || {
+      process: 'respected',
+      outcome: 'too_early',
+      thesis: 'intact',
+      lesson: '',
+    };
+    const lesson = String(draft.lesson || '').trim();
+
+    if (!lesson) {
+      setError('Para cerrar una revisión, escribe qué aprendimos de esta decisión.');
       return;
     }
-    const next = reviewDecision(localStorage, entry.id, note);
+
+    const next = reviewDecision(localStorage, entry.id, {
+      ...draft,
+      lesson,
+    });
     setEntries(next);
-    setReviewNotes((current) => ({ ...current, [entry.id]: '' }));
+    setReviewDrafts((current) => ({ ...current, [entry.id]: undefined }));
     setError('');
+    window.dispatchEvent(new Event('mirror-decision-log-updated'));
   };
 
   return (
@@ -287,24 +307,75 @@ export default function DecisionJournal({ portfolio }) {
               {entry.reviewStatus === 'reviewed' ? (
                 <div className={styles.decisionReviewed}>
                   <Icon name="check" size={14} />
-                  <span><strong>Revisada.</strong> {entry.reviewNote || 'Sin observación adicional.'}</span>
+                  <div>
+                    <span><strong>{learningClassification(entry).label}.</strong> {entry.review?.lesson || entry.reviewNote || 'Sin observación adicional.'}</span>
+                    {entry.review && (
+                      <small>
+                        Proceso: {PROCESS_OPTIONS.find((item) => item.value === entry.review.process)?.label || entry.review.process}
+                        {' · '}Resultado: {OUTCOME_OPTIONS.find((item) => item.value === entry.review.outcome)?.label || entry.review.outcome}
+                        {' · '}Tesis: {THESIS_OPTIONS.find((item) => item.value === entry.review.thesis)?.label || entry.review.thesis}
+                      </small>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <>
-                  <div>
+                <details className={styles.decisionReviewDetails}>
+                  <summary>
                     <Icon name="clock" size={14} />
-                    <span>
-                      Revisar: <strong>{entry.reviewDate ? new Date(`${entry.reviewDate}T12:00:00`).toLocaleDateString('es-CL') : 'sin fecha'}</strong>
-                    </span>
+                    Revisar: <strong>{entry.reviewDate ? new Date(`${entry.reviewDate}T12:00:00`).toLocaleDateString('es-CL') : 'sin fecha'}</strong>
+                  </summary>
+                  <div className={styles.decisionReviewForm}>
+                    <label>
+                      Calidad del proceso
+                      <select
+                        value={reviewDrafts[entry.id]?.process || 'respected'}
+                        onChange={(event) => setReviewDrafts((current) => ({
+                          ...current,
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], process: event.target.value },
+                        }))}
+                      >
+                        {PROCESS_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Resultado posterior
+                      <select
+                        value={reviewDrafts[entry.id]?.outcome || 'too_early'}
+                        onChange={(event) => setReviewDrafts((current) => ({
+                          ...current,
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], outcome: event.target.value },
+                        }))}
+                      >
+                        {OUTCOME_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Estado de la tesis
+                      <select
+                        value={reviewDrafts[entry.id]?.thesis || 'intact'}
+                        onChange={(event) => setReviewDrafts((current) => ({
+                          ...current,
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], thesis: event.target.value },
+                        }))}
+                      >
+                        {THESIS_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <label className={styles.decisionReviewLesson}>
+                      Aprendizaje
+                      <input
+                        type="text"
+                        value={reviewDrafts[entry.id]?.lesson || ''}
+                        onChange={(event) => setReviewDrafts((current) => ({
+                          ...current,
+                          [entry.id]: { process: 'respected', outcome: 'too_early', thesis: 'intact', lesson: '', ...current[entry.id], lesson: event.target.value },
+                        }))}
+                        placeholder="¿Qué aprendimos del proceso, no solo del resultado?"
+                      />
+                    </label>
+                    <button type="button" onClick={() => handleReview(entry)}>Cerrar revisión</button>
                   </div>
-                  <input
-                    type="text"
-                    value={reviewNotes[entry.id] || ''}
-                    onChange={(event) => setReviewNotes((current) => ({ ...current, [entry.id]: event.target.value }))}
-                    placeholder="¿Qué aprendimos?"
-                  />
-                  <button type="button" onClick={() => handleReview(entry)}>Cerrar revisión</button>
-                </>
+                </details>
               )}
             </div>
 
