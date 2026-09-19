@@ -1259,3 +1259,42 @@
   font-size: 7px;
   line-height: 1.5;
 }
+
+
+/* V3 opportunity hard gates */
+.decisionBlocks > div > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.opportunityGateTrack {
+  position: relative;
+  overflow: visible;
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+}
+.opportunityGateTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#72a7ff,#28d9a7);
+}
+.opportunityGateTrack b {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: 9px;
+  background: rgba(255,255,255,.75);
+  transform: translateX(-50%);
+}
+.mainBlocker {
+  display: block;
+  margin-top: 7px;
+  color: #f0c37a;
+  font-size: 7px;
+  font-style: normal;
+  line-height: 1.45;
+}
