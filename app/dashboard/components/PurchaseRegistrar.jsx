@@ -107,8 +107,8 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
       <div className={styles.purchaseRegistrarHeader}>
         <div>
           <p className={styles.kicker}>Registro de movimientos</p>
-          <h3>Comprar desde la billetera</h3>
-          <span>El saldo se descuenta y el activo actualiza participaciones, costo promedio y peso automáticamente.</span>
+          <h3>Registrar compra en Racional</h3>
+          <span>Solo cartera principal Racional. El saldo se descuenta y el activo actualiza participaciones, costo promedio y peso automáticamente.</span>
         </div>
         <span className={styles.walletBadge}>
           <Icon name="portfolio" size={15} /> {asset.currency}: {nativeMoney(wallet.balance, asset.currency)}
