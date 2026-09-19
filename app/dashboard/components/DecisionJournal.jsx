@@ -387,7 +387,6 @@ export default function DecisionJournal({ portfolio }) {
                             process: 'respected',
                             outcome: 'too_early',
                             thesis: 'intact',
-                            bias: entry.bias || 'not_recorded',
                             lesson: '',
                             ...current[entry.id],
                             bias: event.target.value,
