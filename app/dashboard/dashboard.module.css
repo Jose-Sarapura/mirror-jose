@@ -1404,3 +1404,196 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* V3 Real Exposure / Look-through */
+.exposurePanel {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+}
+.exposureSummary {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.exposureSummary article {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+.exposureSummary span,
+.exposureSummary strong,
+.exposureSummary small { display: block; }
+.exposureSummary span { color: var(--muted); font-size: 8px; }
+.exposureSummary strong { margin-top: 6px; font-size: 16px; }
+.exposureSummary small { margin-top: 5px; color: #96a3b2; font-size: 8px; line-height: 1.4; }
+
+.exposureGrid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+.exposureCard {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.018);
+}
+.exposureCardHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.exposureCardHead > div span,
+.exposureCardHead > div strong { display: block; }
+.exposureCardHead > div span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.exposureCardHead > div strong {
+  margin-top: 4px;
+  font-size: 13px;
+}
+.exposureCardHead > small {
+  max-width: 180px;
+  color: #7f8c9f;
+  font-size: 7px;
+  line-height: 1.4;
+  text-align: right;
+}
+.exposureBars {
+  display: grid;
+  gap: 10px;
+}
+.exposureBars > div > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.exposureBars span {
+  color: #aab6c5;
+  font-size: 8px;
+  line-height: 1.35;
+}
+.exposureBars strong {
+  color: #f0f4fa;
+  font-size: 8px;
+  flex: 0 0 auto;
+}
+.exposureBars small {
+  display: block;
+  margin-top: 4px;
+  color: #718096;
+  font-size: 7px;
+  line-height: 1.35;
+}
+.exposureTrack {
+  overflow: hidden;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+}
+.exposureTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#72a7ff,#28d9a7);
+}
+.overlapList {
+  display: grid;
+  gap: 9px;
+}
+.overlapList > div {
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.015);
+}
+.overlapList > div > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.overlapList strong { font-size: 9px; }
+.overlapList p {
+  margin: 6px 0 0;
+  color: #8e9aaa;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.overlapHigh,
+.overlapMedium,
+.overlapLow {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 800;
+}
+.overlapHigh { background: rgba(255,111,125,.10); color: #ff9aa7; }
+.overlapMedium { background: rgba(243,184,91,.10); color: #efc77f; }
+.overlapLow { background: rgba(40,217,167,.10); color: #66e4bf; }
+
+.exposureReading {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: rgba(112,167,255,.025);
+}
+.exposureReading strong {
+  display: block;
+  font-size: 9px;
+}
+.exposureReading p {
+  margin: 5px 0 0;
+  color: #96a2b1;
+  font-size: 8px;
+  line-height: 1.55;
+}
+.exposureSources {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.exposureSources summary {
+  padding-top: 12px;
+  color: #aab6c5;
+  font-size: 8px;
+  cursor: pointer;
+}
+.exposureSources > div {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+.exposureSources span {
+  color: #788699;
+  font-size: 7px;
+}
+.exposureSources b { color: #aeb9c7; }
+
+@media (max-width: 1000px) {
+  .exposureSummary { grid-template-columns: repeat(2,1fr); }
+  .exposureGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .exposurePanel { padding: 18px; }
+  .exposureSummary { grid-template-columns: 1fr 1fr; }
+  .exposureCardHead { flex-direction: column; }
+  .exposureCardHead > small { max-width: none; text-align: left; }
+}
