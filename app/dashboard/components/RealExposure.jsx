@@ -22,7 +22,7 @@ export default function RealExposure({ portfolio }) {
           <p className={styles.kicker}>Exposición real</p>
           <h2>Qué tienes realmente debajo de los fondos</h2>
           <span className={styles.panelSubtitle}>
-            Mirror combina tus pesos actuales con las composiciones subyacentes para detectar concentración y solapamientos.
+            Look-through de la cartera principal Racional. BTC y ETH se analizan por separado porque no son fondos ni comparten esta metodología.
           </span>
         </div>
         <span className={styles.reviewBadge}><Icon name="brain" size={15} /> Look-through</span>
@@ -58,7 +58,7 @@ export default function RealExposure({ portfolio }) {
               <span>Empresas</span>
               <strong>Exposición efectiva</strong>
             </div>
-            <small>Sumando VOO + SMH + Globales + BCH</small>
+            <small>Racional: VOO + SMH + Globales + BCH</small>
           </div>
 
           <div className={styles.exposureBars}>
