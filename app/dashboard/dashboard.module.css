@@ -3105,3 +3105,170 @@
   .cryptoProtectionGrid,
   .cryptoPrinciples { grid-template-columns: 1fr; }
 }
+
+
+/* V3 BTC Cycle Lab */
+.btcCyclePanel {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid rgba(243,184,91,.15);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(243,184,91,.022), rgba(112,167,255,.018)),
+    var(--panel);
+}
+.btcCycleFamilies {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.btcCycleFamilies article {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(255,255,255,.014);
+}
+.btcCycleFamilies strong {
+  display: block;
+  font-size: 9px;
+}
+.btcCycleFamilies p {
+  margin: 6px 0 0;
+  color: #8f9cad;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.btcCycleTable {
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+}
+.btcCycleHead,
+.btcCycleRow {
+  display: grid;
+  grid-template-columns: .55fr 1fr 1fr 1.55fr;
+  gap: 10px;
+  align-items: start;
+}
+.btcCycleHead {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.btcCycleRow {
+  position: relative;
+  padding: 13px 12px 42px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.009);
+}
+.btcCycleRow:last-child { border-bottom: 0; }
+.btcCycleRow strong,
+.btcCycleRow small { display: block; }
+.btcCycleRow strong { font-size: 13px; }
+.btcCycleRow > div:first-child small {
+  margin-top: 4px;
+  color: #8f9cad;
+  font-size: 7px;
+}
+.btcCycleRow p {
+  margin: 0;
+  color: #9aa6b5;
+  font-size: 8px;
+  line-height: 1.48;
+}
+.btcCycleRow > div:nth-child(4) small {
+  margin-top: 6px;
+  color: #768597;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.btcCycleRow blockquote {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  color: #c3cfdb;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.btcCurrentResearch {
+  margin-top: 12px;
+  padding: 15px;
+  border: 1px solid rgba(112,167,255,.14);
+  border-radius: 14px;
+  background: rgba(112,167,255,.025);
+}
+.btcCurrentResearch h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  letter-spacing: -.02em;
+}
+.btcCurrentGrid {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.btcCurrentGrid article {
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(0,0,0,.1);
+}
+.btcCurrentGrid span,
+.btcCurrentGrid strong,
+.btcCurrentGrid small { display: block; }
+.btcCurrentGrid span { color: var(--muted); font-size: 7px; }
+.btcCurrentGrid strong { margin-top: 5px; font-size: 10px; }
+.btcCurrentGrid small {
+  margin-top: 5px;
+  color: #8795a6;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.btcCycleConclusions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.btcCycleConclusions > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.012);
+  color: #96a3b3;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.btcCycleConclusions svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #9ec2ff;
+}
+.btcCycleConclusions strong { color: #d6dee8; }
+
+@media (max-width: 1050px) {
+  .btcCycleFamilies,
+  .btcCurrentGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 780px) {
+  .btcCycleFamilies,
+  .btcCurrentGrid { grid-template-columns: 1fr; }
+  .btcCycleHead { display: none; }
+  .btcCycleRow {
+    grid-template-columns: 1fr;
+    padding-bottom: 62px;
+  }
+}
