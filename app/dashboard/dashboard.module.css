@@ -1298,3 +1298,58 @@
   font-style: normal;
   line-height: 1.45;
 }
+
+
+/* V3 opportunity readability */
+.opportunityCard {
+  padding: 20px;
+}
+.decisionBlocks {
+  gap: 12px;
+  margin-top: 16px;
+}
+.decisionBlocks > div {
+  gap: 6px;
+}
+.decisionBlocks > div > div:first-child {
+  min-height: 18px;
+}
+.decisionBlocks span {
+  color: #b7c2cf;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.decisionBlocks strong {
+  color: #f1f5fb;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.opportunityGateTrack {
+  height: 6px;
+  margin-top: 7px;
+}
+.opportunityGateTrack b {
+  top: -2px;
+  height: 10px;
+}
+.gatePass,
+.gateFail {
+  margin-top: 6px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.decisionMethod {
+  margin-top: 14px;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.opportunityThesis p {
+  font-size: 9px;
+}
+.opportunityThesis small {
+  font-size: 8px;
+}
+.mainBlocker {
+  font-size: 8px;
+}
