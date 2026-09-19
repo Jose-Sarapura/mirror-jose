@@ -11,6 +11,7 @@ import ProjectionChart from './components/ProjectionChart';
 import Icon from './components/Icon';
 import PurchaseRegistrar from './components/PurchaseRegistrar';
 import FormattedNumberInput from './components/FormattedNumberInput';
+import OpportunityRadar from './components/OpportunityRadar';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -86,6 +87,13 @@ export default function DashboardPage() {
   });
   const primaryGap = [...portfolio.assets].sort((a, b) => b.gapCLP - a.gapCLP)[0];
   const marketState = portfolio.assets.find((asset) => asset.currency === 'USD')?.marketState;
+  const freedomMilestones = [
+    { label: 'Primer nivel de libertad', target: 100000000, age: 45 },
+    { label: 'Independencia fuerte', target: 300000000, age: 50 },
+    { label: 'Gran holgura', target: 600000000, age: 55 },
+  ];
+  const smh = portfolio.assets.find((asset) => asset.ticker === 'SMH');
+  const smhStressImpact = smh ? smh.weight * 0.5 : 0;
 
   return (
     <DashboardShell active={active} onChange={setActive} updatedAt={portfolio.updatedAt} onRefresh={load} refreshing={refreshing}>
@@ -142,6 +150,19 @@ export default function DashboardPage() {
               <strong>{clp.format(portfolio.totalCashCLP)}</strong>
               <small>Incluido en el patrimonio total</small>
             </article>
+          </section>
+
+          <section className={styles.milestoneStrip}>
+            {freedomMilestones.map((milestone) => {
+              const progress = Math.min(100, (portfolio.totalCLP / milestone.target) * 100);
+              return (
+                <article key={milestone.target}>
+                  <div><span>{milestone.label}</span><strong>{clp.format(milestone.target)}</strong></div>
+                  <small>Referencia edad {milestone.age} · {progress.toFixed(1)}% avanzado</small>
+                  <div className={styles.milestoneTrack}><span style={{ width: `${progress}%` }} /></div>
+                </article>
+              );
+            })}
           </section>
 
           <section className={styles.statGrid}>
@@ -256,14 +277,58 @@ export default function DashboardPage() {
             })}
           </div>
           <div className={styles.riskPanel}>
-            <div><p className={styles.kicker}>Reglas permanentes</p><h2>Disciplina del portafolio</h2></div>
+            <div><p className={styles.kicker}>Constitución Mirror</p><h2>Disciplina antes que cantidad</h2></div>
             <div className={styles.rulesGrid}>
-              <article><strong>1</strong><span>VOO mantiene el rol de núcleo y no se vende para perseguir tendencias.</span></article>
-              <article><strong>2</strong><span>SMH tiene un límite estratégico de 20% por su volatilidad sectorial.</span></article>
-              <article><strong>3</strong><span>Los aportes nuevos corrigen brechas antes de vender posiciones.</span></article>
-              <article><strong>4</strong><span>Una caída de precio no invalida la tesis; un cambio fundamental sí.</span></article>
+              <article><strong>1</strong><span>Entender antes de comprar: cada activo necesita una función y una tesis clara.</span></article>
+              <article><strong>2</strong><span>Precio no es valor: una caída activa análisis, no una compra automática.</span></article>
+              <article><strong>3</strong><span>Diversificación real: revisar solapamientos antes de sumar otro ETF o acción.</span></article>
+              <article><strong>4</strong><span>Retorno, riesgo y liquidez se evalúan juntos.</span></article>
+              <article><strong>5</strong><span>VOO sigue siendo el núcleo; SMH conserva su límite estratégico de 20%.</span></article>
+              <article><strong>6</strong><span>Los aportes nuevos corrigen brechas antes de vender posiciones.</span></article>
+              <article><strong>7</strong><span>El riesgo debe reducirse gradualmente al acercarnos a 45, 50 y 55 años.</span></article>
+              <article><strong>8</strong><span>Registrar decisiones permite aprender del proceso, no solo del resultado.</span></article>
             </div>
           </div>
+
+          <section className={styles.riskLab}>
+            <div className={styles.panelHeader}>
+              <div><p className={styles.kicker}>Riesgo y corrección</p><h2>¿Cuánto puede doler una caída?</h2></div>
+              <span className={styles.reviewBadge}>Modo Corrección V3</span>
+            </div>
+            <div className={styles.riskLabGrid}>
+              <article>
+                <span>SMH actual</span>
+                <strong>{smh ? smh.weight.toFixed(1) : '—'}%</strong>
+                <small>Objetivo máximo estratégico: 20%</small>
+              </article>
+              <article>
+                <span>Si SMH cae 50%</span>
+                <strong>-{smhStressImpact.toFixed(1)}%</strong>
+                <small>Impacto aproximado sobre la cartera por esa posición aislada.</small>
+              </article>
+              <article>
+                <span>Recuperación tras -50%</span>
+                <strong>+100%</strong>
+                <small>Recordatorio matemático: perder 50% exige duplicar para volver al origen.</small>
+              </article>
+              <article>
+                <span>Regla de corrección</span>
+                <strong>-10 / -15 / -20 / -25%</strong>
+                <small>Despliegue progresivo de liquidez; siempre priorizando asignación y tesis.</small>
+              </article>
+            </div>
+          </section>
+        </section>
+      )}
+
+      {active === 'opportunities' && (
+        <section className={styles.pageSection}>
+          <div className={styles.pageTitle}>
+            <p className={styles.kicker}>Oportunidades</p>
+            <h2>Decidir antes de incorporar</h2>
+            <span>Solo tres candidatos activos. Menos posiciones, mejor entendidas.</span>
+          </div>
+          <OpportunityRadar />
         </section>
       )}
 
