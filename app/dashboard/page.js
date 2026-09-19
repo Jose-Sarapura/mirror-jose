@@ -236,7 +236,11 @@ export default function DashboardPage() {
 
       {active === 'portfolio' && (
         <section className={styles.pageSection}>
-          <div className={styles.pageTitle}><p className={styles.kicker}>Portafolio</p><h2>Posiciones completas</h2><span>Cada activo incluye precio, costo promedio, peso y brecha.</span></div>
+          <div className={styles.pageTitle}><p className={styles.kicker}>Portafolio</p><h2>Posiciones por plataforma</h2><span>Racional mantiene su estrategia 60/20/15/5; Buda se muestra como exposición cripto independiente.</span></div>
+          <div className={styles.platformSectionHead}>
+            <div><p className={styles.kicker}>Racional</p><h3>Cartera principal</h3></div>
+            <span>{clp.format(portfolio.investedCLP)} · {portfolio.racionalWeightTotalInvested.toFixed(1)}% del total invertido</span>
+          </div>
           <div className={styles.portfolioTable}>
             <div className={styles.tableHead}><span>Activo</span><span>Precio / costo</span><span>Valor</span><span>Resultado</span><span>Asignación</span></div>
             {portfolio.assets.map((asset) => (
@@ -260,6 +264,39 @@ export default function DashboardPage() {
               </article>
             ))}
           </div>
+
+          <div className={styles.platformSectionHead}>
+            <div><p className={styles.kicker}>Buda</p><h3>Cripto existente</h3></div>
+            <span>{clp.format(portfolio.cryptoInvestedCLP)} · {portfolio.budaWeightTotalInvested.toFixed(1)}% del total invertido</span>
+          </div>
+
+          <div className={styles.portfolioTable}>
+            <div className={styles.tableHead}><span>Activo</span><span>Precio / costo</span><span>Valor</span><span>Resultado</span><span>Composición</span></div>
+            {(portfolio.cryptoAssets || []).map((asset) => (
+              <div className={styles.tableRow} key={asset.ticker}>
+                <span className={styles.tableAsset}>
+                  <i style={{ background: asset.accent }}>{asset.ticker.slice(0, 2)}</i>
+                  <b>{asset.ticker}<small>{shares(asset.shares)} {asset.ticker}</small></b>
+                </span>
+                <span>
+                  <b>{clp.format(asset.price)}</b>
+                  <small>Prom. {clp.format(asset.averageCost)}{asset.averageCostEstimated ? ' · estimado' : ''}</small>
+                </span>
+                <span>
+                  <b>{clp.format(asset.valueCLP)}</b>
+                  <small>Buda.com</small>
+                </span>
+                <span>
+                  <b className={asset.totalReturnPct >= 0 ? styles.positive : styles.negative}>{percentage(asset.totalReturnPct)}</b>
+                  <small>{clp.format(asset.totalReturnNative)}</small>
+                </span>
+                <span>
+                  <b>{asset.weightWithinCrypto.toFixed(1)}% de Buda</b>
+                  <small>{asset.weightTotalInvested.toFixed(1)}% del total invertido</small>
+                </span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -271,6 +308,7 @@ export default function DashboardPage() {
           <LearningLoop />
           <PortfolioHealthGate portfolio={portfolio} />
           <RealExposure portfolio={portfolio} />
+          <CryptoExposure portfolio={portfolio} />
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
@@ -316,9 +354,9 @@ export default function DashboardPage() {
 
       {active === 'projections' && (
         <section className={styles.pageSection}>
-          <div className={styles.pageTitle}><p className={styles.kicker}>Proyecciones</p><h2>Escenarios de planificación</h2><span>No son predicciones: muestran el impacto de aportes y rentabilidad.</span></div>
+          <div className={styles.pageTitle}><p className={styles.kicker}>Proyecciones</p><h2>Escenarios de la cartera principal</h2><span>Racional solamente. BTC y ETH no se proyectan hasta definir una metodología cripto específica.</span></div>
           <section className={styles.projectionHero}>
-            <div><span>Patrimonio actual</span><strong>{clp.format(portfolio.totalCLP)}</strong></div>
+            <div><span>Racional actual</span><strong>{clp.format(portfolio.totalCLP)}</strong></div>
             <div><span>Aporte mensual</span><strong>{clp.format(monthlyContributionCLP)}</strong></div>
             <div><span>Meta</span><strong>{clp.format(goalCLP)}</strong></div>
             <div><span>Año estimado base</span><strong>{projectedGoalYear ? projectedGoalYear.toFixed(1) : '—'}</strong></div>
@@ -337,7 +375,7 @@ export default function DashboardPage() {
 
       {active === 'settings' && (
         <section className={styles.pageSection}>
-          <div className={styles.pageTitle}><p className={styles.kicker}>Configuración</p><h2>Datos de tu portafolio</h2><span>Administra billeteras y registra compras sin tocar código.</span></div>
+          <div className={styles.pageTitle}><p className={styles.kicker}>Configuración</p><h2>Datos de Racional y Buda</h2><span>Racional mantiene objetivos estratégicos; BTC y ETH se administran como posiciones independientes.</span></div>
           <section className={styles.settingsPanel}>
             <div className={styles.settingsGeneral}>
               <label>Meta patrimonial<input type="number" value={settings.goalCLP} onChange={(event) => setSettings({ ...settings, goalCLP: Number(event.target.value) })} /></label>
@@ -377,11 +415,46 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            <div className={styles.settingsCrypto}>
+              <div className={styles.settingsCryptoTitle}>
+                <div><p className={styles.kicker}>Buda</p><strong>BTC + ETH</strong></div>
+                <span>Sin objetivo estratégico por ahora</span>
+              </div>
+              <div className={styles.settingsCryptoHead}><span>Activo</span><span>Unidades</span><span>Costo promedio CLP</span></div>
+              {(portfolio.cryptoAssets || []).map((asset) => (
+                <div className={styles.settingsCryptoRow} key={asset.ticker}>
+                  <strong>{asset.ticker}</strong>
+                  <FormattedNumberInput
+                    value={settings.crypto?.[asset.ticker]?.shares}
+                    decimals={9}
+                    onValueChange={(value) => setSettings({
+                      ...settings,
+                      crypto: {
+                        ...settings.crypto,
+                        [asset.ticker]: { ...settings.crypto?.[asset.ticker], shares: value },
+                      },
+                    })}
+                  />
+                  <FormattedNumberInput
+                    value={settings.crypto?.[asset.ticker]?.averageCost}
+                    decimals={2}
+                    onValueChange={(value) => setSettings({
+                      ...settings,
+                      crypto: {
+                        ...settings.crypto,
+                        [asset.ticker]: { ...settings.crypto?.[asset.ticker], averageCost: value },
+                      },
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
             <div className={styles.settingsActions}>
               <button type="button" className={styles.primaryButton} onClick={saveSettings}><Icon name={saved ? 'check' : 'edit'} size={17} /> {saved ? 'Guardado' : 'Guardar cambios'}</button>
               <button type="button" className={styles.secondaryButton} onClick={resetSettings}>Restaurar datos base</button>
             </div>
-            <p className={styles.settingsNote}><Icon name="info" size={16} /> Los datos se guardan en este dispositivo. Los precios se actualizan desde el mercado.</p>
+            <p className={styles.settingsNote}><Icon name="info" size={16} /> Los datos se guardan en este dispositivo. Racional actualiza precios de mercado y BTC/ETH usan precios públicos de Buda.com. LTC no forma parte de Mirror.</p>
           </section>
         </section>
       )}
