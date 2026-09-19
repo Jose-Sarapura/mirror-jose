@@ -60,8 +60,9 @@ export const RISK_CONSTITUTION = [
 ];
 
 export const DISCIPLINE_THRESHOLDS = {
-  smhHardMax: 20,
+  smhTargetMax: 20,
   smhWarning: 19,
+  smhRebalanceReview: 22,
   technologyWarning: 45,
   technologyHigh: 50,
   singleCompanyWarning: 10,
@@ -78,14 +79,23 @@ export function buildDisciplineState(portfolio) {
 
   const alerts = [];
 
-  if (smhWeight > DISCIPLINE_THRESHOLDS.smhHardMax) {
+  if (smhWeight > DISCIPLINE_THRESHOLDS.smhRebalanceReview) {
     alerts.push({
-      id: 'smh-hard',
+      id: 'smh-rebalance-review',
       severity: 'block',
-      rule: 'Límite estratégico SMH',
+      rule: 'SMH: revisar rebalanceo',
       current: `${smhWeight.toFixed(1)}%`,
-      limit: `${DISCIPLINE_THRESHOLDS.smhHardMax}% máximo`,
-      action: 'No aumentar SMH. Corregir mediante nuevos aportes a otros activos; evaluar reducción solo si la sobreponderación persiste o cambia la tesis.',
+      limit: `revisión desde ${DISCIPLINE_THRESHOLDS.smhRebalanceReview}%`,
+      action: 'No aportar a SMH. Revisar si la sobreponderación persiste y si conviene rebalancear gradualmente. No vender automáticamente solo por superar el umbral.',
+    });
+  } else if (smhWeight >= DISCIPLINE_THRESHOLDS.smhTargetMax) {
+    alerts.push({
+      id: 'smh-contribution-block',
+      severity: 'warning',
+      rule: 'SMH sobre objetivo: aportes bloqueados',
+      current: `${smhWeight.toFixed(1)}%`,
+      limit: `objetivo máximo ${DISCIPLINE_THRESHOLDS.smhTargetMax}%`,
+      action: 'Mantener la posición, pero no destinar nuevo dinero a SMH. Corregir la brecha mediante aportes a otros activos.',
     });
   } else if (smhWeight >= DISCIPLINE_THRESHOLDS.smhWarning) {
     alerts.push({
@@ -93,7 +103,7 @@ export function buildDisciplineState(portfolio) {
       severity: 'warning',
       rule: 'SMH cerca del límite',
       current: `${smhWeight.toFixed(1)}%`,
-      limit: `${DISCIPLINE_THRESHOLDS.smhHardMax}% máximo`,
+      limit: `objetivo máximo ${DISCIPLINE_THRESHOLDS.smhTargetMax}%`,
       action: 'No priorizar nuevos aportes a SMH hasta que vuelva a quedar claramente bajo su objetivo.',
     });
   }
