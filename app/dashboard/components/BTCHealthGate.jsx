@@ -1,58 +1,93 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
 import { appendDecisionLog, readDecisionLog } from '../lib/decision-log';
 import styles from '../dashboard.module.css';
 
 const RULE_MARKER = 'mirror-v3-btc-health-gate-rule-v1';
+const HISTORY_KEY = 'mirror-v3-btc-health-history-v1';
 
-const signals = [
-  {
-    key: 'mvrv',
+const DEFINITIONS = {
+  mvrv: {
     name: 'MVRV',
-    role: 'Alerta macro',
+    role: 'Valoración / euforia',
     timing: 'Anticipación',
     independence: 'Alta',
-    status: 'No extremo',
-    tone: 'good',
-    explanation: 'Mide cuánto se aleja el valor de mercado del capital realizado. Detecta euforia o infravaloración, pero históricamente puede permanecer elevado durante meses.',
-    use: 'Sube la vigilancia; nunca decide una salida por sí solo.',
+    explanation: 'Compara valor de mercado con capital realizado. Detecta exceso de beneficio agregado, pero no identifica por sí solo el día de salida.',
   },
-  {
-    key: 'lth',
+  lth: {
     name: 'Distribución LTH',
     role: 'Oferta / convicción',
     timing: 'Anticipación',
     independence: 'Alta',
-    status: 'Vigilar',
-    tone: 'watch',
-    explanation: 'Observa si holders de largo plazo están transfiriendo monedas de forma persistente. Puede advertir que manos antiguas están monetizando antes de que el precio confirme deterioro.',
-    use: 'Es una señal temprana más valiosa cuando la distribución persiste y aparece junto a valoración elevada o demanda debilitándose.',
+    explanation: 'Busca si holders antiguos están activando oferta. Mientras no conectemos cohortes Glassnode exactas, Mirror usa actividad de oferta a 1 año como proxy explícito.',
   },
-  {
-    key: 'capital',
+  capital: {
     name: 'Entrada de capital',
     role: 'Demanda / absorción',
     timing: 'Anticipación + confirmación',
     independence: 'Media-alta',
-    status: 'Débil',
-    tone: 'watch',
-    explanation: 'Realized Cap, ETF, stablecoins y compras institucionales indican si existe capital nuevo capaz de absorber oferta. Puede desacelerarse antes de una pérdida clara de estructura.',
-    use: 'Confirma si la distribución está siendo absorbida o si el mercado empieza a quedarse sin combustible.',
+    explanation: 'Usa la evolución del realized cap para medir si capital nuevo está entrando y absorbiendo la oferta disponible.',
   },
-  {
-    key: 'sth',
+  sth: {
     name: 'STH cost basis',
     role: 'Estructura / régimen',
     timing: 'Confirmación',
     independence: 'Media',
-    status: 'Bajo presión',
-    tone: 'watch',
-    explanation: 'Es el costo medio de compradores recientes y reacciona más rápido al precio. Suele funcionar como soporte en tendencias alcistas y resistencia en tendencias bajistas.',
-    use: 'No anticipa bien un techo por sí solo; confirma que el deterioro dejó de ser solo una alerta y está afectando la estructura.',
+    explanation: 'Compara el precio actual con el costo medio de compradores recientes. El precio es vivo; el cost basis exacto permanece como snapshot hasta conectar una fuente de cohortes.',
   },
-];
+};
+
+function readHistory() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeHistory(history) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-120)));
+}
+
+function recordChanges(data) {
+  if (!data?.signals || typeof window === 'undefined') return [];
+  const current = readHistory();
+  const next = [...current];
+
+  Object.entries(data.signals).forEach(([key, signal]) => {
+    const last = [...next].reverse().find((item) => item.key === key);
+    if (!last || last.status !== signal.status) {
+      next.push({
+        key,
+        status: signal.status,
+        tone: signal.tone,
+        value: signal.value ?? signal.valueUSD ?? signal.change30dPct ?? null,
+        asOf: data.asOf,
+        recordedAt: new Date().toISOString(),
+      });
+    }
+  });
+
+  const gateLast = [...next].reverse().find((item) => item.key === 'gate');
+  if (!gateLast || gateLast.status !== data.gate?.label) {
+    next.push({
+      key: 'gate',
+      status: data.gate?.label || 'Sin estado',
+      tone: data.gate?.key || 'neutral',
+      value: null,
+      asOf: data.asOf,
+      recordedAt: new Date().toISOString(),
+    });
+  }
+
+  writeHistory(next);
+  return next;
+}
 
 function seedRule() {
   if (typeof window === 'undefined' || localStorage.getItem(RULE_MARKER) === 'seeded') return;
@@ -77,96 +112,251 @@ function seedRule() {
   localStorage.setItem(RULE_MARKER, 'seeded');
 }
 
+function toneClass(signal) {
+  if (signal?.tone === 'good') return styles.successPill;
+  if (signal?.tone === 'danger') return styles.btcDangerPill;
+  if (signal?.tone === 'watch') return styles.warningPill;
+  return styles.neutralPill;
+}
+
+function modeLabel(mode) {
+  if (mode === 'live') return 'Dato vivo';
+  if (mode === 'proxy') return 'Proxy vivo';
+  if (mode === 'hybrid') return 'Híbrido';
+  if (mode === 'snapshot') return 'Snapshot';
+  return 'Sin dato vivo';
+}
+
+function fmt(value, digits = 2) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(digits) : '—';
+}
+
+function moneyUSD(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export default function BTCHealthGate() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [history, setHistory] = useState([]);
+
   useEffect(() => {
     seedRule();
+    setHistory(readHistory());
+
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const response = await fetch('/api/dashboard/btc-health', { cache: 'no-store' });
+        if (!response.ok) throw new Error('No fue posible actualizar BTC Health Gate');
+        const payload = await response.json();
+        if (cancelled) return;
+        setData(payload);
+        setHistory(recordChanges(payload));
+        setError('');
+      } catch (err) {
+        if (cancelled) return;
+        setError(err.message || 'Error de actualización');
+      }
+    }
+
+    load();
+    const timer = setInterval(load, 6 * 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
+
+  const lastChanges = useMemo(() => {
+    const result = {};
+    Object.keys(DEFINITIONS).forEach((key) => {
+      result[key] = [...history].reverse().find((item) => item.key === key) || null;
+    });
+    return result;
+  }, [history]);
+
+  const gateChanged = useMemo(
+    () => [...history].reverse().find((item) => item.key === 'gate') || null,
+    [history],
+  );
+
+  const signals = Object.entries(DEFINITIONS).map(([key, definition]) => ({
+    key,
+    ...definition,
+    ...(data?.signals?.[key] || {}),
+  }));
 
   return (
     <section className={styles.btcHealthPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Health Gate · V1</p>
-          <h2>Qué anticipa y qué confirma</h2>
+          <p className={styles.kicker}>BTC Health Gate · V2 dinámico</p>
+          <h2>Anticipación + confirmación + persistencia</h2>
           <span className={styles.panelSubtitle}>
-            Las cuatro señales no pesan igual. Mirror evita sumar indicadores correlacionados como si fueran cuatro pruebas independientes.
+            Mirror actualiza las señales disponibles, registra cambios de estado y distingue dato vivo, proxy y snapshot para evitar falsa precisión.
           </span>
         </div>
-        <span className={styles.reviewBadge}><Icon name="shield" size={15} /> Sin venta automática</span>
+        <span className={styles.reviewBadge}>
+          <Icon name="shield" size={15} /> {data?.gate?.label || 'Actualizando'}
+        </span>
       </div>
 
+      {error && (
+        <div className={styles.btcHealthError}>
+          <Icon name="info" size={14} />
+          <span>{error}. Se mantiene el último registro local disponible.</span>
+        </div>
+      )}
+
       <div className={styles.btcHealthSignalGrid}>
-        {signals.map((signal) => (
-          <article key={signal.key}>
-            <div className={styles.btcHealthSignalTop}>
-              <div>
-                <strong>{signal.name}</strong>
-                <small>{signal.role}</small>
+        {signals.map((signal) => {
+          const change = lastChanges[signal.key];
+          return (
+            <article key={signal.key}>
+              <div className={styles.btcHealthSignalTop}>
+                <div>
+                  <strong>{signal.name}</strong>
+                  <small>{signal.role}</small>
+                </div>
+                <span className={toneClass(signal)}>{signal.status || 'Actualizando'}</span>
               </div>
-              <span className={signal.tone === 'good' ? styles.successPill : styles.warningPill}>
-                {signal.status}
-              </span>
-            </div>
-            <div className={styles.btcHealthMeta}>
-              <span>{signal.timing}</span>
-              <span>Independencia {signal.independence}</span>
-            </div>
-            <p>{signal.explanation}</p>
-            <small className={styles.btcHealthUse}>{signal.use}</small>
-          </article>
-        ))}
+
+              <div className={styles.btcHealthMeta}>
+                <span>{signal.timing}</span>
+                <span>Independencia {signal.independence}</span>
+                <span>{modeLabel(signal.sourceMode)}</span>
+              </div>
+
+              <div className={styles.btcLiveMetric}>
+                {signal.key === 'mvrv' && (
+                  <><span>MVRV actual</span><strong>{fmt(signal.value, 2)}</strong></>
+                )}
+                {signal.key === 'capital' && (
+                  <><span>Realized Cap · 30 días</span><strong>{fmt(signal.change30dPct, 2)}%</strong></>
+                )}
+                {signal.key === 'lth' && (
+                  <><span>Actividad 1 año · Δ30d</span><strong>{fmt(signal.change30dPp, 2)} pp</strong></>
+                )}
+                {signal.key === 'sth' && (
+                  <><span>Precio vs. STH cost basis</span><strong>{fmt(signal.distancePct, 1)}%</strong></>
+                )}
+              </div>
+
+              <p>{signal.explanation}</p>
+
+              <div className={styles.btcPersistence}>
+                <span>
+                  Persistencia:
+                  <strong>{signal.persistence?.days ? ' ' + signal.persistence.days + ' días' : ' iniciando registro'}</strong>
+                </span>
+                <span>
+                  Último cambio Mirror:
+                  <strong>{change?.asOf || ' hoy'}</strong>
+                </span>
+              </div>
+
+              <small className={styles.btcHealthUse}>
+                {signal.sourceLabel || 'Fuente pendiente'}
+              </small>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className={styles.btcHealthDataQuality}>
+        <div>
+          <span>Datos exactos vivos</span>
+          <strong>{data?.coverage?.exactLive ?? '—'}/4</strong>
+          <small>MVRV + entrada de capital</small>
+        </div>
+        <div>
+          <span>Proxy vivo</span>
+          <strong>{data?.coverage?.proxyLive ?? '—'}/4</strong>
+          <small>LTH hasta conectar cohortes exactas</small>
+        </div>
+        <div>
+          <span>Híbrido / snapshot</span>
+          <strong>{data?.coverage?.snapshot ?? '—'}/4</strong>
+          <small>STH cost basis con precio vivo</small>
+        </div>
+        <div>
+          <span>Fecha de datos</span>
+          <strong>{data?.asOf || '—'}</strong>
+          <small>{data?.sourceStatus === 'live' ? 'Actualización diaria pública' : 'Modo respaldo'}</small>
+        </div>
       </div>
 
       <div className={styles.btcHealthRedundancy}>
         <div>
           <strong>MVRV ↔ STH cost basis</strong>
-          <span>Solapamiento parcial. Ambos usan realized-price/MVRV, pero MVRV agregado mira valoración macro y STH mira régimen de compradores recientes. No se cuentan como dos alertas tempranas independientes.</span>
+          <span>Solapamiento parcial. No se cuentan como dos alertas tempranas independientes: MVRV mira valoración macro y STH confirma régimen de compradores recientes.</span>
         </div>
         <div>
           <strong>LTH ↔ entrada de capital</strong>
-          <span>Relacionados, no equivalentes. LTH responde “quién está distribuyendo”; capital responde “si existe demanda nueva capaz de absorber esa oferta”. La combinación es más informativa que cualquiera por separado.</span>
+          <span>Relacionados, no equivalentes. LTH pregunta quién activa oferta; capital pregunta si existe demanda suficiente para absorberla.</span>
         </div>
       </div>
 
       <div className={styles.btcHealthStages}>
-        <article>
-          <span>🟢 Mantener</span>
+        <article className={data?.gate?.key === 'maintain' ? styles.btcStageActive : ''}>
+          <span>🟢 Mantener / vigilancia</span>
           <strong>0–1 familia deteriorada</strong>
-          <p>Tesis intacta. Una señal aislada solo se vigila.</p>
+          <p>Una señal aislada no justifica protección.</p>
         </article>
-        <article>
+        <article className={data?.gate?.key === 'prepare' ? styles.btcStageActive : ''}>
           <span>🟡 Preparar protección</span>
-          <strong>≥2 familias independientes</strong>
-          <p>Debe existir al menos una alerta temprana: valoración, LTH o demanda. Todavía no implica vender.</p>
+          <strong>≥2 familias tempranas</strong>
+          <p>Mirror prepara el plan, pero todavía no vende.</p>
         </article>
-        <article>
+        <article className={data?.gate?.key === 'evaluate_protection' ? styles.btcStageActive : ''}>
           <span>🟠 Protección a evaluar</span>
-          <strong>Alerta + confirmación</strong>
-          <p>Deterioro persistente en varias familias y confirmación por demanda o estructura. Recién aquí se estudia reducir.</p>
+          <strong>Alerta + confirmación persistente</strong>
+          <p>Recién aquí corresponde estudiar una reducción.</p>
         </article>
         <article>
           <span>🔴 Reducir / salir</span>
           <strong>Tesis o régimen seriamente deteriorado</strong>
-          <p>No depende de alcanzar un drawdown prefijado. La invalidación de tesis puede dominar todas las demás métricas.</p>
+          <p>La invalidación de tesis puede dominar todas las métricas.</p>
         </article>
       </div>
 
       <div className={styles.btcHealthCurrent}>
         <div>
-          <p className={styles.kicker}>Lectura actual de investigación · 16-09-2026</p>
-          <h3>Vigilancia, todavía no protección</h3>
+          <p className={styles.kicker}>Lectura automática · {data?.asOf || 'actualizando'}</p>
+          <h3>{data?.gate?.label || 'Actualizando señales'}</h3>
         </div>
         <p>
-          La investigación reciente muestra demanda/capital debilitados y estructura bajo presión, mientras la valoración no presenta euforia histórica extrema.
-          Eso justifica vigilancia y confirmación adicional, no una reducción automática.
+          {data?.gate?.explanation || 'Mirror está obteniendo las métricas públicas disponibles.'}
+          {gateChanged?.asOf ? ' Último cambio de estado registrado: ' + gateChanged.asOf + '.' : ''}
         </p>
       </div>
 
-      <div className={styles.cryptoGuardrail}>
+      <div className={styles.btcHealthResearchNote}>
         <Icon name="info" size={15} />
+        <div>
+          <strong>Calidad de datos antes que falsa precisión</strong>
+          <p>
+            MVRV y realized cap se actualizan desde Coin Metrics Community. El bloque LTH usa temporalmente un proxy público de actividad de oferta a 1 año;
+            no lo presentamos como LTH exacto. El STH cost basis mantiene el snapshot de investigación de {data?.signals?.sth?.snapshotDate || '16-09-2026'}
+            ({moneyUSD(data?.signals?.sth?.valueUSD)}), combinado con precio diario vivo.
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.cryptoGuardrail}>
+        <Icon name="target" size={15} />
         <span>
-          <strong>Regla de diseño:</strong> no fijaremos porcentaje de venta hasta validar persistencia, independencia y falsos positivos.
-          Una señal debe aportar información nueva; si solo repite otra métrica, no aumenta la convicción.
+          <strong>Regla vigente:</strong> una caída o un único indicador no genera venta.
+          La persistencia aumenta la importancia de una señal, pero la decisión sigue requiriendo confluencia e invalidación suficiente de la tesis o del régimen.
         </span>
       </div>
     </section>
