@@ -117,6 +117,9 @@ export default function OpportunityRadar() {
                   </div>
                   <strong>{candidate.decision.status}</strong>
                   <small>{candidate.decision.explanation}</small>
+                  {candidate.decision.mainBlocker && (
+                    <em className={styles.mainBlocker}>Bloqueo actual: {candidate.decision.mainBlocker}</em>
+                  )}
                 </div>
 
                 <div className={styles.opportunityMetrics}>
@@ -141,13 +144,24 @@ export default function OpportunityRadar() {
                 </div>
 
                 <div className={styles.decisionBlocks}>
-                  {candidate.decision.blocks.map((block) => (
-                    <div key={block.key}>
-                      <span>{block.label}</span>
-                      <strong>{Math.round(block.score)}/100</strong>
-                      <div><i style={{ width: `${Math.max(0, Math.min(100, block.score))}%` }} /></div>
-                    </div>
-                  ))}
+                  {candidate.decision.blocks.map((block) => {
+                    const passed = block.score >= block.gate;
+                    return (
+                      <div key={block.key}>
+                        <div>
+                          <span>{block.label} · peso {block.weight}%</span>
+                          <strong>{Math.round(block.score)}/100</strong>
+                        </div>
+                        <div className={styles.opportunityGateTrack}>
+                          <i style={{ width: `${Math.max(0, Math.min(100, block.score))}%` }} />
+                          <b style={{ left: `${block.gate}%` }} title={`Hard gate: ${block.gate}`} />
+                        </div>
+                        <small className={passed ? styles.gatePass : styles.gateFail}>
+                          {passed ? `Gate aprobado · mínimo ${block.gate}` : `Gate no aprobado · mínimo ${block.gate}`}
+                        </small>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className={styles.decisionMethod}>
                   Datos fundamentales al {new Date(candidate.fundamentalsUpdatedAt).toLocaleDateString('es-CL')} · {candidate.sourceLabel}
@@ -158,7 +172,7 @@ export default function OpportunityRadar() {
 
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
-            <span><strong>Regla Mirror:</strong> la conclusión sale de 5 bloques: valoración 25%, fundamentales/calidad 25%, riesgo 15%, encaje con cartera 20% y tesis 15%. “Candidato a incorporar” significa que supera el filtro inicial; todavía falta decidir porcentaje y fuente de financiamiento.</span>
+            <span><strong>Regla Mirror:</strong> valoración 25%, fundamentales/calidad 25%, riesgo 20%, encaje 20% y tesis 10%. Además, cada bloque tiene un hard gate obligatorio: 60 / 70 / 60 / 75 / 75. Un promedio alto nunca compensa un gate crítico fallado.</span>
           </div>
         </>
       )}
