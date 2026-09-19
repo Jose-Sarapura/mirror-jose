@@ -188,11 +188,11 @@ export function portfolioHealthDecision(asset) {
     failedCritical,
     valuationAllowsNewMoney,
     blocks: [
-      { key: 'valuation', label: 'Valoración', score: scores.valuation, gate: gates.valuationForNewMoney, note: 'Influye principalmente en si conviene destinar nuevo dinero hoy.' },
-      { key: 'fundamentals', label: asset.ticker === 'CFIETFGE' || asset.ticker === 'VOO' || asset.ticker === 'SMH' ? 'Calidad / fundamentales' : 'Fundamentales', score: scores.fundamentals, gate: gates.fundamentals, note: 'Calidad del activo, resultados, estructura y capacidad de sostener su función.' },
-      { key: 'risk', label: 'Riesgo / resiliencia', score: scores.risk, gate: gates.risk, note: 'Concentración, volatilidad, balance, ciclo y capacidad de soportar escenarios adversos.' },
-      { key: 'fit', label: 'Encaje cartera', score: scores.fit, gate: gates.fit, note: 'Qué tan bien cumple su rol dentro del 60/20/15/5 sin duplicar riesgos innecesarios.' },
-      { key: 'thesis', label: 'Tesis', score: scores.thesis, gate: gates.thesis, note: 'Vigencia de la razón estructural por la que el activo sigue en cartera.' },
+      { key: 'valuation', label: 'Valoración', score: scores.valuation, gate: gates.valuationForNewMoney, weight: 20, note: 'Influye principalmente en si conviene destinar nuevo dinero hoy.' },
+      { key: 'fundamentals', label: asset.ticker === 'CFIETFGE' || asset.ticker === 'VOO' || asset.ticker === 'SMH' ? 'Calidad / fundamentales' : 'Fundamentales', score: scores.fundamentals, gate: gates.fundamentals, weight: 25, note: 'Calidad del activo, resultados, estructura y capacidad de sostener su función.' },
+      { key: 'risk', label: 'Riesgo / resiliencia', score: scores.risk, gate: gates.risk, weight: 20, note: 'Concentración, volatilidad, balance, ciclo y capacidad de soportar escenarios adversos.' },
+      { key: 'fit', label: 'Encaje cartera', score: scores.fit, gate: gates.fit, weight: 20, note: 'Qué tan bien cumple su rol dentro del 60/20/15/5 sin duplicar riesgos innecesarios.' },
+      { key: 'thesis', label: 'Tesis', score: scores.thesis, gate: gates.thesis, weight: 15, note: 'Vigencia de la razón estructural por la que el activo sigue en cartera.' },
     ],
   };
 }
