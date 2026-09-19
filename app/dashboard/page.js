@@ -18,6 +18,7 @@ import DisciplineMode from './components/DisciplineMode';
 import DecisionJournal from './components/DecisionJournal';
 import LearningLoop from './components/LearningLoop';
 import CryptoExposure from './components/CryptoExposure';
+import CryptoProtectionMonitor from './components/CryptoProtectionMonitor';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -309,6 +310,7 @@ export default function DashboardPage() {
           <PortfolioHealthGate portfolio={portfolio} />
           <RealExposure portfolio={portfolio} />
           <CryptoExposure portfolio={portfolio} />
+          <CryptoProtectionMonitor portfolio={portfolio} />
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
