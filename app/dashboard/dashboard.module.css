@@ -918,3 +918,37 @@
   .opportunityMetrics { grid-template-columns: 1fr 1fr 1fr; }
   .mobileNav span { font-size: 7px; }
 }
+
+
+/* V3 clarity: separate price alerts from investment decisions */
+.decisionStatusBox {
+  margin: 12px 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(112,167,255,.16);
+  border-radius: 12px;
+  background: rgba(112,167,255,.045);
+}
+.decisionStatusBox span,
+.decisionStatusBox strong,
+.decisionStatusBox small {
+  display: block;
+}
+.decisionStatusBox span {
+  color: var(--muted);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.decisionStatusBox strong {
+  margin-top: 5px;
+  color: #d9e6fb;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.decisionStatusBox small {
+  margin-top: 5px;
+  color: #8f9cad;
+  font-size: 7px;
+  line-height: 1.5;
+}
+.radarFooter strong { color: #d5dfed; }
