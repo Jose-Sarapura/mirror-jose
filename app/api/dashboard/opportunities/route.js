@@ -86,22 +86,22 @@ function priceSignal(drawdown) {
   }
   if (drawdown <= -20) {
     return {
-      status: 'Revisión prioritaria',
+      status: 'Alerta de precio alta',
       level: 'review',
-      note: 'La caída merece revisar valoración y fundamentos; no implica compra automática.',
+      note: 'Está 20% o más bajo su máximo de 1 año. Esto NO significa que esté barato ni que sea una compra.',
     };
   }
   if (drawdown <= -10) {
     return {
-      status: 'Revisar',
+      status: 'Alerta de precio media',
       level: 'watch',
-      note: 'El precio se alejó de máximos; conviene actualizar la tesis antes de actuar.',
+      note: 'Está entre 10% y 20% bajo su máximo de 1 año. Requiere análisis antes de cualquier decisión.',
     };
   }
   return {
-    status: 'Observar',
+    status: 'Sin alerta de precio',
     level: 'neutral',
-    note: 'Sin señal de precio suficiente para justificar una decisión por sí sola.',
+    note: 'La distancia al máximo de 1 año es menor a 10%. El precio por sí solo no activa revisión.',
   };
 }
 
@@ -115,6 +115,8 @@ export async function GET() {
       ...snapshot,
       signal: priceSignal(snapshot.drawdownFromHigh),
       thesisStatus: 'En estudio',
+      decisionStatus: 'Aún no evaluado para incorporación',
+      decisionNote: 'Faltan valoración, fundamentales, riesgo y encaje con la cartera antes de decidir.',
       cadence: {
         market: 'Diaria',
         thesis: 'Semanal / por evento',
