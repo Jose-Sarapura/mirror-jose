@@ -157,7 +157,7 @@ export default function OpportunityRadar() {
                           <b style={{ left: `${block.gate}%` }} title={`Hard gate: ${block.gate}`} />
                         </div>
                         <small className={passed ? styles.gatePass : styles.gateFail}>
-                          {passed ? `Gate aprobado · mínimo ${block.gate}` : `Gate no aprobado · mínimo ${block.gate}`}
+                          {passed ? `✓ Cumple · mín. ${block.gate}` : `✕ No cumple · mín. ${block.gate}`}
                         </small>
                       </div>
                     );
