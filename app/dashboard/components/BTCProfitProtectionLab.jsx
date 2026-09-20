@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
+import { appendDecisionLog, readDecisionLog } from '../lib/decision-log';
 import styles from '../dashboard.module.css';
+
+const CONCLUSION_MARKER = 'mirror-v3-btc-profit-protection-conclusion-v1';
 
 function pct(value, digits = 1) {
   const n = Number(value);
@@ -38,6 +41,54 @@ function confirmationLabel(type) {
   return '—';
 }
 
+function bestByCoverage(summary, minimumCycles = 3) {
+  return [...(summary || [])]
+    .filter((item) => item.cyclesTriggered >= minimumCycles)
+    .sort((a, b) => {
+      if (a.falsePositives !== b.falsePositives) return a.falsePositives - b.falsePositives;
+      const aDamage = Number.isFinite(a.averageDamageAtConfirmationPct) ? a.averageDamageAtConfirmationPct : -999;
+      const bDamage = Number.isFinite(b.averageDamageAtConfirmationPct) ? b.averageDamageAtConfirmationPct : -999;
+      return bDamage - aDamage;
+    })[0] || null;
+}
+
+function seedLabConclusion(data) {
+  if (typeof window === 'undefined' || !data?.summary?.length) return;
+  if (localStorage.getItem(CONCLUSION_MARKER) === 'seeded') return;
+
+  const existing = readDecisionLog(localStorage);
+  const id = 'btc-profit-protection-lab-conclusion-v1';
+
+  if (!existing.some((entry) => entry.id === id)) {
+    const v22Full = bestByCoverage(data.summary, 3);
+    const v22Two = bestByCoverage(data.summary, 2);
+    const v21Full = bestByCoverage(data.legacyV21?.summary, 3);
+
+    appendDecisionLog(localStorage, {
+      id,
+      date: new Date().toISOString().slice(0, 10),
+      type: 'no_action',
+      asset: 'BTC',
+      ruleId: 'btc-profit-protection-lab',
+      ruleTitle: 'Ninguna regla del Profit Protection Lab entra al BTC Health Gate',
+      decision: 'No adoptar V2, V2.1.1 ni V2.2 como regla de salida de BTC',
+      reason: 'V2 confirmó demasiado tarde; V2.1.1 redujo el daño pero produjo demasiados falsos positivos; V2.2 exigió doble confirmación y el ruido siguió siendo alto o la cobertura cayó al endurecer el drawdown.',
+      evidence: [
+        `V2: ${data.diagnostics?.legacyV2WithTwoOrMoreCycles ?? 0} combinaciones con cobertura >=2/3.`,
+        v21Full ? `V2.1.1 mejor cobertura 3/3: ${v21Full.falsePositives} falsos positivos; daño medio ${pct(v21Full.averageDamageAtConfirmationPct)}.` : 'V2.1.1: sin regla robusta.',
+        v22Full ? `V2.2 mejor cobertura 3/3: ${v22Full.falsePositives} falsos positivos; daño medio ${pct(v22Full.averageDamageAtConfirmationPct)}.` : 'V2.2: sin cobertura 3/3.',
+        v22Two ? `V2.2 mejor cobertura >=2/3: ${v22Two.falsePositives} falsos positivos; daño medio ${pct(v22Two.averageDamageAtConfirmationPct)}.` : '',
+      ].filter(Boolean).join(' '),
+      source: 'btc-profit-protection-lab',
+      reviewStatus: 'reviewed',
+      reviewNote: 'Laboratorio cerrado sin promover parámetros. El drawdown sigue activando revisión, no venta. La próxima mejora debe venir de una familia de evidencia realmente independiente y con datos históricos válidos.',
+    });
+  }
+
+  localStorage.setItem(CONCLUSION_MARKER, 'seeded');
+  window.dispatchEvent(new Event('mirror-decision-log-updated'));
+}
+
 export default function BTCProfitProtectionLab() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -63,6 +114,19 @@ export default function BTCProfitProtectionLab() {
   }, []);
 
   const summary = useMemo(() => data?.summary || [], [data]);
+
+  useEffect(() => {
+    if (data?.sourceStatus === 'live-backtest-v2-2' && data?.summary?.length) {
+      seedLabConclusion(data);
+    }
+  }, [data]);
+
+  const labComparison = useMemo(() => ({
+    v2Qualified: data?.diagnostics?.legacyV2WithTwoOrMoreCycles ?? 0,
+    v21Full: bestByCoverage(data?.legacyV21?.summary, 3),
+    v22Full: bestByCoverage(data?.summary, 3),
+    v22TwoPlus: bestByCoverage(data?.summary, 2),
+  }), [data]);
 
   const candidates = useMemo(() => {
     const sorted = [...summary].sort((a, b) => {
@@ -95,14 +159,14 @@ export default function BTCProfitProtectionLab() {
     <section className={styles.btcProfitPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Profit Protection Lab · V2.2</p>
-          <h2>Contexto → drawdown → doble confirmación</h2>
+          <p className={styles.kicker}>BTC Profit Protection Lab · conclusión</p>
+          <h2>Protección sí; regla automática de salida, todavía no</h2>
           <span className={styles.panelSubtitle}>
-            V2 fue demasiado lento y V2.1.1 demasiado sensible. V2.2 exige deterioro de capital y de estructura de precio dentro de la misma ventana, sin obligarlos a coincidir el mismo día.
+            V2, V2.1.1 y V2.2 ya cumplieron su propósito: descartar reglas frágiles. Mirror conserva el drawdown como alerta de revisión, pero ninguna combinación probada se incorpora al Health Gate.
           </span>
         </div>
         <span className={styles.reviewBadge}>
-          <Icon name="shield" size={15} /> No modifica reglas
+          <Icon name="shield" size={15} /> Lab cerrado · 0 reglas adoptadas
         </span>
       </div>
 
@@ -164,8 +228,8 @@ export default function BTCProfitProtectionLab() {
 
       <div className={styles.btcSequenceCandidates}>
         <div className={styles.btcProfitColumnTitle}>
-          <p className={styles.kicker}>Candidatas para inspección</p>
-          <h3>No es un ranking definitivo</h3>
+          <p className={styles.kicker}>Última prueba · V2.2</p>
+          <h3>Resultados conservados para auditoría</h3>
         </div>
 
         {data?.diagnostics && (
@@ -210,6 +274,49 @@ export default function BTCProfitProtectionLab() {
         </div>
       </div>
 
+      <div className={styles.btcProfitMethod}>
+        <div>
+          <span>V2 · confirmación lenta</span>
+          <strong>Descartado</strong>
+          <small>{labComparison.v2Qualified} combinaciones alcanzaron cobertura ≥2/3; la confirmación llegaba demasiado tarde.</small>
+        </div>
+        <div>
+          <span>V2.1.1 · confirmación rápida</span>
+          <strong>Descartado</strong>
+          <small>{labComparison.v21Full ? `Mejor 3/3: ${labComparison.v21Full.falsePositives} falsos positivos · daño ${pct(labComparison.v21Full.averageDamageAtConfirmationPct)}.` : 'No produjo una regla robusta.'}</small>
+        </div>
+        <div>
+          <span>V2.2 · doble confirmación</span>
+          <strong>Descartado</strong>
+          <small>{labComparison.v22Full ? `Mejor 3/3: ${labComparison.v22Full.falsePositives} falsos positivos · daño ${pct(labComparison.v22Full.averageDamageAtConfirmationPct)}.` : 'No conservó cobertura 3/3.'}</small>
+        </div>
+        <div>
+          <span>Resultado operativo</span>
+          <strong>Sin cambio</strong>
+          <small>Drawdown = revisión. Reducir/salir exige confluencia independiente y una decisión explícita.</small>
+        </div>
+      </div>
+
+      <div className={styles.btcProfitConclusion}>
+        <Icon name="shield" size={15} />
+        <div>
+          <strong>Conclusión formal del Profit Protection Lab</strong>
+          <p>
+            No seguiremos ajustando -8/-10/-12%, 30/60 días o 7/14/21 días para hacer que el pasado encaje.
+            Con precio, MVRV y Realized Cap no apareció una zona suficientemente robusta: acelerar aumenta el ruido y endurecer la regla sacrifica cobertura o llega tarde.
+            <b> Ninguna de estas versiones entra al BTC Health Gate.</b>
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.cryptoGuardrail}>
+        <Icon name="target" size={15} />
+        <span>
+          <strong>Siguiente capa de investigación:</strong> incorporar una familia realmente independiente —STH/LTH cost basis, demanda spot/ETF o comportamiento de holders—
+          solo cuando exista una serie histórica suficientemente válida. Hasta entonces, Mirror mantiene la Constitución acordada: precio activa revisión; evidencia y confluencia deciden.
+        </span>
+      </div>
+
       <div className={styles.btcProfitCycles}>
         <div className={styles.btcSequenceCyclesHead}>
           <span>Ciclo</span>
@@ -241,10 +348,9 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.btcProfitConclusion}>
         <Icon name="target" size={15} />
         <div>
-          <strong>Qué debe demostrar V2.2</strong>
+          <strong>Estado del experimento</strong>
           <p>
-            La doble confirmación debe conservar cobertura de al menos dos ciclos y reducir de forma material los falsos positivos de V2.1.1 sin volver al retraso del V2 original.
-            Si el ruido baja pero el daño al confirmar vuelve a ser excesivo, también se descarta.
+            V2.2 queda archivado como evidencia, no como regla. Su función fue demostrar que exigir dos confirmaciones relacionadas reduce poco el ruido y no justifica seguir optimizando parámetros dentro de la misma familia.
           </p>
         </div>
       </div>
