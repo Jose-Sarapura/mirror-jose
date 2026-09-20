@@ -21,6 +21,7 @@ function daysAgo(days) {
 }
 
 function num(value) {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -38,7 +39,7 @@ function diffDays(a, b) {
 }
 
 function classifyMvrv(value) {
-  if (!Number.isFinite(value)) return { status: 'Sin dato', tone: 'neutral', risk: false };
+  if (!Number.isFinite(value) || value <= 0) return { status: 'Sin dato', tone: 'neutral', risk: false };
   if (value >= 3.2) return { status: 'Extremo', tone: 'danger', risk: true };
   if (value >= 2.4) return { status: 'Elevado', tone: 'watch', risk: true };
   if (value < 1) return { status: 'Bajo costo agregado', tone: 'good', risk: false };
@@ -210,6 +211,16 @@ export async function GET() {
 
     const structuralConfirmation = sthState.risk && (sthPersistence.days || 0) >= 3;
 
+    const availability = {
+      mvrv: Number.isFinite(latest.mvrv) && latest.mvrv > 0,
+      capital: Number.isFinite(capitalChange30dPct),
+      sth: Number.isFinite(sthState.distancePct),
+    };
+    const availableOperational = Object.values(availability).filter(Boolean).length;
+    const missingOperational = Object.entries(availability)
+      .filter(([, available]) => !available)
+      .map(([key]) => key);
+
     let gate = {
       key: 'maintain',
       label: operationalRisks === 0 ? 'Mantener' : 'Vigilancia',
@@ -218,7 +229,13 @@ export async function GET() {
         : 'Hay una señal que requiere seguimiento, pero todavía no existe confluencia suficiente.',
     };
 
-    if (operationalRisks >= 2 && structuralConfirmation && earlyRisks >= 1) {
+    if (availableOperational < 3) {
+      gate = {
+        key: 'insufficient_data',
+        label: 'Datos incompletos',
+        explanation: `Falta información operativa válida (${missingOperational.join(', ')}). Mirror no emite una lectura de Mantener/Proteger hasta recuperar esos datos.`,
+      };
+    } else if (operationalRisks >= 2 && structuralConfirmation && earlyRisks >= 1) {
       gate = {
         key: 'evaluate_protection',
         label: 'Protección a evaluar',
@@ -240,9 +257,11 @@ export async function GET() {
       gate,
       coverage: {
         operationalTotal: 3,
-        exactLive: 2,
-        hybrid: 1,
+        availableOperational,
+        exactLive: [availability.mvrv, availability.capital].filter(Boolean).length,
+        hybrid: availability.sth ? 1 : 0,
         pending: 1,
+        missingOperational,
       },
       signals: {
         mvrv: {
