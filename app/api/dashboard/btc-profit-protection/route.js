@@ -13,6 +13,7 @@ const CYCLES = [
 const DRAWDOWNS = [-8, -10, -12];
 const CONTEXT_WINDOWS = [30, 60];
 const CONFIRM_WINDOWS = [7, 14, 21];
+const FAST_CONFIRMATION_FAMILIES = ['capital_relative', 'price_structure'];
 
 function num(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -80,7 +81,9 @@ function enrichCycle(rows) {
   return rows.map((row, index) => {
     high = Math.max(high, row.price);
     const compare = index >= 30 ? rows[index - 30]?.realizedCap : null;
+    const compare7 = index >= 7 ? rows[index - 7]?.realizedCap : null;
     const capital30dPct = pctChange(row.realizedCap, compare);
+    const capital7dPct = pctChange(row.realizedCap, compare7);
     const drawdownPct = high > 0 ? ((row.price / high) - 1) * 100 : 0;
 
     return {
@@ -89,6 +92,7 @@ function enrichCycle(rows) {
       highWater: high,
       drawdownPct,
       capital30dPct,
+      capital7dPct,
       mvrvElevated: Number.isFinite(row.mvrv) && row.mvrv >= 2.4,
       capitalWeak: Number.isFinite(capital30dPct) && capital30dPct < 0.5,
       capitalNegative: Number.isFinite(capital30dPct) && capital30dPct < 0,
@@ -180,6 +184,91 @@ function extractSequenceEpisodes(rows, rule) {
   return episodes;
 }
 
+function findFastConfirmation(rows, eventIndex, rule) {
+  const end = Math.min(rows.length - 1, eventIndex + rule.confirmWindow);
+  const event = rows[eventIndex];
+
+  for (let i = eventIndex; i <= end; i += 1) {
+    const row = rows[i];
+
+    if (rule.confirmationFamily === 'capital_relative') {
+      const contraction = Number.isFinite(row.capital7dPct) && row.capital7dPct <= 0;
+      const deterioration = Number.isFinite(row.capital7dPct)
+        && Number.isFinite(event.capital7dPct)
+        && row.capital7dPct <= event.capital7dPct - 0.35;
+
+      if (contraction || deterioration) {
+        return {
+          found: true,
+          date: row.date,
+          index: i,
+          type: contraction ? 'capital_7d_negative' : 'capital_7d_deterioration',
+          capital7dPct: row.capital7dPct,
+          eventCapital7dPct: event.capital7dPct,
+          price: row.price,
+        };
+      }
+    }
+
+    if (rule.confirmationFamily === 'price_structure') {
+      const deeper = row.drawdownPct <= rule.drawdown - 4;
+      let persistent = false;
+
+      if (i >= eventIndex + 2) {
+        const last3 = rows.slice(i - 2, i + 1);
+        persistent = last3.length === 3 && last3.every((item) => item.drawdownPct <= rule.drawdown);
+      }
+
+      if (deeper || persistent) {
+        return {
+          found: true,
+          date: row.date,
+          index: i,
+          type: deeper ? 'price_deeper_4pp' : 'price_below_3d',
+          drawdownPct: row.drawdownPct,
+          price: row.price,
+        };
+      }
+    }
+  }
+
+  return { found: false };
+}
+
+function extractFastSequenceEpisodes(rows, rule) {
+  const episodes = [];
+  let inDrawdown = false;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    const prev = rows[i - 1];
+    const crossed = prev.drawdownPct > rule.drawdown && row.drawdownPct <= rule.drawdown;
+
+    if (crossed && !inDrawdown) {
+      const context = hadPriorContext(rows, i, rule.contextWindow);
+      if (context.ok) {
+        const confirmation = findFastConfirmation(rows, i, rule);
+        if (confirmation.found) {
+          episodes.push({
+            eventDate: row.date,
+            eventIndex: i,
+            eventPrice: row.price,
+            eventDrawdownPct: row.drawdownPct,
+            highWater: row.highWater,
+            context,
+            confirmation,
+          });
+        }
+      }
+      inDrawdown = true;
+    }
+
+    if (row.drawdownPct > rule.drawdown / 2) inDrawdown = false;
+  }
+
+  return episodes;
+}
+
 function futureNewHigh(rows, index, highWater, days = 270) {
   const end = Math.min(rows.length - 1, index + days);
   for (let i = index + 1; i <= end; i += 1) {
@@ -232,6 +321,32 @@ function buildRules() {
 }
 
 const RULES = buildRules();
+
+function buildFastRules() {
+  const rules = [];
+  for (const drawdown of DRAWDOWNS) {
+    for (const contextWindow of CONTEXT_WINDOWS) {
+      for (const confirmWindow of CONFIRM_WINDOWS) {
+        for (const confirmationFamily of FAST_CONFIRMATION_FAMILIES) {
+          const familyLabel = confirmationFamily === 'capital_relative'
+            ? 'capital relativo'
+            : 'estructura precio';
+          rules.push({
+            key: `v21_dd${Math.abs(drawdown)}_ctx${contextWindow}_cf${confirmWindow}_${confirmationFamily}`,
+            label: `DD ${drawdown}% · ctx ${contextWindow}d · ${familyLabel} ≤${confirmWindow}d`,
+            drawdown,
+            contextWindow,
+            confirmWindow,
+            confirmationFamily,
+          });
+        }
+      }
+    }
+  }
+  return rules;
+}
+
+const FAST_RULES = buildFastRules();
 
 function analyzeRule(rows, peak, rule) {
   const episodes = extractSequenceEpisodes(rows, rule);
@@ -337,11 +452,120 @@ function summarize(cycles) {
   });
 }
 
+
+function analyzeFastRule(rows, peak, rule) {
+  const episodes = extractFastSequenceEpisodes(rows, rule);
+
+  const falsePositives = episodes.filter((episode) => {
+    const moreThan60BeforeFinalPeak = daysBetween(episode.confirmation.date, peak.date) > 60;
+    if (!moreThan60BeforeFinalPeak) return false;
+    return futureNewHigh(rows, episode.confirmation.index, episode.highWater, 270).recovered;
+  });
+
+  const topStart = dateAdd(peak.date, -60);
+  const topEnd = dateAdd(peak.date, 90);
+
+  const topTrigger = episodes.find((episode) => {
+    const d = new Date(`${episode.confirmation.date}T00:00:00Z`);
+    return d >= topStart && d <= topEnd;
+  }) || null;
+
+  let detail = null;
+  if (topTrigger) {
+    const confirmationRow = rows[topTrigger.confirmation.index];
+    detail = {
+      contextDate: topTrigger.context.firstDate,
+      eventDate: topTrigger.eventDate,
+      confirmDate: topTrigger.confirmation.date,
+      confirmationType: topTrigger.confirmation.type,
+      daysFromPeak: daysBetween(peak.date, topTrigger.confirmation.date),
+      eventDrawdownPct: topTrigger.eventDrawdownPct,
+      damageAtConfirmationPct: ((confirmationRow.price / peak.price) - 1) * 100,
+      priceAtConfirmation: confirmationRow.price,
+      capital7dPct: confirmationRow.capital7dPct,
+      recoveredNewHigh: futureNewHigh(rows, topTrigger.confirmation.index, topTrigger.highWater, 270),
+      futureRisk: futureWorstDrawdown(rows, topTrigger.confirmation.index, 120),
+    };
+  }
+
+  return {
+    ...rule,
+    totalEpisodes: episodes.length,
+    falsePositives: falsePositives.length,
+    topTrigger: detail,
+  };
+}
+
+function analyzeFastCycle(allRows, cycle) {
+  const rows = enrichCycle(allRows.filter((row) => row.date >= cycle.start && row.date <= cycle.end));
+  if (!rows.length) return null;
+
+  const peak = rows.reduce((best, row) => row.price > best.price ? row : best, rows[0]);
+
+  return {
+    cycle: cycle.key,
+    peak: {
+      date: peak.date,
+      price: peak.price,
+      mvrv: peak.mvrv,
+    },
+    rules: FAST_RULES.map((rule) => analyzeFastRule(rows, peak, rule)),
+  };
+}
+
+function summarizeFast(cycles) {
+  return FAST_RULES.map((rule) => {
+    const perCycle = cycles
+      .map((cycle) => cycle.rules.find((item) => item.key === rule.key))
+      .filter(Boolean);
+
+    const triggers = perCycle.filter((item) => item.topTrigger);
+    const falsePositives = perCycle.reduce((sum, item) => sum + item.falsePositives, 0);
+    const recovered = triggers.filter((item) => item.topTrigger?.recoveredNewHigh?.recovered).length;
+
+    const avgDamage = triggers.length
+      ? triggers.reduce((sum, item) => sum + item.topTrigger.damageAtConfirmationPct, 0) / triggers.length
+      : null;
+
+    const avgDays = triggers.length
+      ? triggers.reduce((sum, item) => sum + item.topTrigger.daysFromPeak, 0) / triggers.length
+      : null;
+
+    const worstDamage = triggers.length
+      ? Math.min(...triggers.map((item) => item.topTrigger.damageAtConfirmationPct))
+      : null;
+
+    let classification = 'Cobertura insuficiente';
+    if (triggers.length >= 2) {
+      if (falsePositives >= 3) classification = 'Demasiado sensible';
+      else if (Number.isFinite(avgDamage) && avgDamage <= -15) classification = 'Demasiado tardía';
+      else if (falsePositives <= 1 && Number.isFinite(avgDamage) && avgDamage > -12) classification = 'Candidata a estudiar';
+      else classification = 'Trade-off intermedio';
+    }
+
+    return {
+      ...rule,
+      cyclesTriggered: triggers.length,
+      falsePositives,
+      recoveriesAfterTrigger: recovered,
+      averageDamageAtConfirmationPct: avgDamage,
+      worstDamageAtConfirmationPct: worstDamage,
+      averageDaysFromPeak: avgDays,
+      classification,
+    };
+  });
+}
+
 export async function GET() {
   try {
     const rows = await fetchHistory();
-    const cycles = CYCLES.map((cycle) => analyzeCycle(rows, cycle)).filter(Boolean);
-    const summary = summarize(cycles);
+
+    const legacyCycles = CYCLES.map((cycle) => analyzeCycle(rows, cycle)).filter(Boolean);
+    const legacySummary = summarize(legacyCycles);
+
+    const cycles = CYCLES.map((cycle) => analyzeFastCycle(rows, cycle)).filter(Boolean);
+    const summary = summarizeFast(cycles);
+
     const diagnostics = {
       rowCount: rows.length,
       validMvrvRows: rows.filter((row) => Number.isFinite(row.mvrv)).length,
@@ -355,19 +579,31 @@ export async function GET() {
       combinationsTested: summary.length,
       combinationsWithAnyCycle: summary.filter((item) => item.cyclesTriggered > 0).length,
       combinationsWithTwoOrMoreCycles: summary.filter((item) => item.cyclesTriggered >= 2).length,
+      legacyV2Combinations: legacySummary.length,
+      legacyV2WithTwoOrMoreCycles: legacySummary.filter((item) => item.cyclesTriggered >= 2).length,
     };
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
-      sourceStatus: 'live-backtest-v2',
+      sourceStatus: 'live-backtest-v2-1',
       diagnostics,
       methodology: {
-        sequence: 'Contexto previo → cruce de drawdown → confirmación posterior',
+        version: 'V2.1',
+        sequence: 'Contexto previo → cruce de drawdown → confirmación rápida posterior',
         context: 'MVRV >= 2.4 en la ventana previa O capital débil (< +0.5% a 30d) al menos 7 días',
         event: 'Primer cruce del drawdown desde el máximo conocido hasta ese día',
-        confirmation: 'Capital 30d negativo o 7 días consecutivos débil dentro de la ventana posterior',
+        confirmationFamilies: {
+          capital_relative: 'Realized Cap 7d entra en contracción o deteriora al menos 0.35 pp frente al nivel del evento',
+          price_structure: 'BTC permanece 3 cierres bajo el umbral o profundiza otros 4 puntos porcentuales de drawdown',
+        },
+        confirmationWindow: '7, 14 o 21 días posteriores al evento',
         falsePositive: 'Confirmación >60 días antes del máximo final que luego recupera un nuevo máximo dentro de 270 días',
-        caveat: 'Tres ciclos son insuficientes para optimizar un umbral. El objetivo es descartar reglas frágiles y encontrar una zona robusta.',
+        caveat: 'Los umbrales V2.1 son pruebas gruesas predefinidas, no parámetros optimizados. Tres ciclos no permiten ajuste fino.',
+      },
+      legacyV2: {
+        methodology: 'Capital 30d negativo o 7 días consecutivos débil',
+        cycles: legacyCycles,
+        summary: legacySummary,
       },
       cycles,
       summary,
