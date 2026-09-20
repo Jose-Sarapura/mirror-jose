@@ -128,9 +128,14 @@ async function fetchEtfFlows() {
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trim();
-    if (!/^\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*\|/.test(line)) continue;
+    const normalized = line.replace(/^\|\s*/, '');
+    if (!/^\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*\|/.test(normalized)) continue;
 
-    const cells = line.split('|').map((cell) => cell.trim());
+    const cells = normalized
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter((cell, index, array) => !(index === array.length - 1 && cell === ''));
+
     if (cells.length < 2) continue;
 
     const date = parseDate(cells[0]);
