@@ -28,6 +28,7 @@ function pillClass(label) {
 }
 
 function confirmationLabel(type) {
+  if (type === 'dual_confirmation') return 'Capital + precio';
   if (type === 'capital_7d_negative') return 'Capital 7d negativo';
   if (type === 'capital_7d_deterioration') return 'Capital 7d deteriora';
   if (type === 'price_deeper_4pp') return 'Drawdown profundiza +4 pp';
@@ -94,10 +95,10 @@ export default function BTCProfitProtectionLab() {
     <section className={styles.btcProfitPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Profit Protection Lab · V2.1.1</p>
-          <h2>Contexto → drawdown → confirmación rápida</h2>
+          <p className={styles.kicker}>BTC Profit Protection Lab · V2.2</p>
+          <h2>Contexto → drawdown → doble confirmación</h2>
           <span className={styles.panelSubtitle}>
-            V2 quedó descartado por confirmar demasiado tarde. V2.1.1 mantiene las confirmaciones rápidas, pero corrige cómo evaluamos las señales previas al máximo para no premiar falsas salidas tempranas.
+            V2 fue demasiado lento y V2.1.1 demasiado sensible. V2.2 exige deterioro de capital y de estructura de precio dentro de la misma ventana, sin obligarlos a coincidir el mismo día.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -132,8 +133,8 @@ export default function BTCProfitProtectionLab() {
         <article>
           <span>3</span>
           <div>
-            <strong>Confirmación posterior</strong>
-            <p>Dos familias: deterioro relativo de capital o persistencia/profundización del precio.</p>
+            <strong>Doble confirmación posterior</strong>
+            <p>Deben aparecer capital relativo deteriorado y estructura de precio deteriorada dentro de 7/14/21 días.</p>
           </div>
         </article>
       </div>
@@ -152,7 +153,7 @@ export default function BTCProfitProtectionLab() {
         <div>
           <span>Confirmación</span>
           <strong>7 · 14 · 21 días</strong>
-          <small>Capital relativo y estructura de precio se prueban por separado.</small>
+          <small>La señal se confirma cuando aparece la segunda familia; no tienen que ocurrir el mismo día.</small>
         </div>
         <div>
           <span>Falso positivo</span>
@@ -171,7 +172,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>Diagnóstico V2.1.1:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas. V2 queda preservado como control: {data.diagnostics.legacyV2Combinations} combinaciones, {data.diagnostics.legacyV2WithTwoOrMoreCycles} con cobertura ≥2/3.
+              <strong>Diagnóstico V2.2:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones de doble confirmación. Controles preservados: V2 {data.diagnostics.legacyV2Combinations} combinaciones ({data.diagnostics.legacyV2WithTwoOrMoreCycles} con cobertura ≥2/3) · V2.1.1 {data.diagnostics.legacyV21Combinations} combinaciones ({data.diagnostics.legacyV21WithTwoOrMoreCycles} con cobertura ≥2/3).
             </span>
           </div>
         )}
@@ -180,7 +181,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>El backtest V2.1.1 sí devolvió resultados.</strong> Si ninguna combinación alcanza al menos 2 de 3 ciclos, las seis que aparecen abajo se muestran solo para diagnóstico y no son candidatas de salida.
+              <strong>El backtest V2.2 sí devolvió resultados.</strong> Si ninguna combinación alcanza al menos 2 de 3 ciclos, las seis que aparecen abajo se muestran solo para diagnóstico y no son candidatas de salida.
             </span>
           </div>
         )}
@@ -240,10 +241,10 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.btcProfitConclusion}>
         <Icon name="target" size={15} />
         <div>
-          <strong>Qué debe demostrar V2.1.1</strong>
+          <strong>Qué debe demostrar V2.2</strong>
           <p>
-            Una secuencia útil debe aparecer en al menos dos ciclos, mantener pocos falsos positivos y confirmar bastante antes que el V2 original.
-            Una señal previa al máximo solo cuenta como útil si deja como máximo 15% de subida hasta el techo final; así una corrección profunda previa ya no puede pasar por una buena detección.
+            La doble confirmación debe conservar cobertura de al menos dos ciclos y reducir de forma material los falsos positivos de V2.1.1 sin volver al retraso del V2 original.
+            Si el ruido baja pero el daño al confirmar vuelve a ser excesivo, también se descarta.
           </p>
         </div>
       </div>
