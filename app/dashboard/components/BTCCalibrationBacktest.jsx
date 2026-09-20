@@ -22,9 +22,29 @@ function fmtUSD(value) {
 
 function leadLabel(signal) {
   if (!signal) return 'No apareció';
-  if (signal.daysToPeak > 0) return `${signal.daysToPeak} días antes`;
-  if (signal.daysToPeak < 0) return `${Math.abs(signal.daysToPeak)} días después`;
+  const days = Number.isFinite(signal.daysToPeak) ? signal.daysToPeak : signal.leadDays;
+  if (!Number.isFinite(days)) return 'Sin referencia';
+  if (days > 0) return `${days} días antes`;
+  if (days < 0) return `${Math.abs(days)} días después`;
   return 'En el máximo';
+}
+
+function signalQuality(signal, kind = 'capital') {
+  if (!signal) return { label: 'No apareció', tone: 'neutral' };
+  const days = Number.isFinite(signal.daysToPeak) ? signal.daysToPeak : signal.leadDays;
+  if (!Number.isFinite(days)) return { label: 'Sin referencia', tone: 'neutral' };
+
+  if (kind === 'mvrv') {
+    if (days >= 30 && days <= 180) return { label: 'Alerta temprana útil', tone: 'good' };
+    if (days > 180) return { label: 'Demasiado temprana', tone: 'watch' };
+    if (days >= 0 && days < 30) return { label: 'Cerca del máximo', tone: 'good' };
+    return { label: 'Tardía', tone: 'danger' };
+  }
+
+  if (days > 60) return { label: 'Falso positivo potencial', tone: 'watch' };
+  if (days >= 0 && days <= 60) return { label: 'Alerta útil', tone: 'good' };
+  if (days >= -30) return { label: 'Confirmación tardía', tone: 'watch' };
+  return { label: 'Demasiado tardía', tone: 'danger' };
 }
 
 export default function BTCCalibrationBacktest() {
@@ -120,15 +140,18 @@ export default function BTCCalibrationBacktest() {
             <div>
               <strong>{leadLabel(cycle.mvrv?.attention24)}</strong>
               <small>{cycle.mvrv?.attention24?.date || '—'}</small>
+              <em className={styles.btcBacktestVerdict}>{signalQuality(cycle.mvrv?.attention24, 'mvrv').label}</em>
             </div>
             <div>
               <strong>{leadLabel(cycle.mvrv?.overheated30)}</strong>
               <small>{cycle.mvrv?.overheated30?.date || '—'}</small>
+              <em className={styles.btcBacktestVerdict}>{signalQuality(cycle.mvrv?.overheated30, 'mvrv').label}</em>
             </div>
             {[cycle.capital?.negative7d, cycle.capital?.negative14d, cycle.capital?.negative21d].map((signal, index) => (
               <div key={index}>
                 <strong>{leadLabel(signal)}</strong>
                 <small>{signal ? `DD ${fmtPct(signal.drawdownFromPeakPct)}` : 'Sin señal'}</small>
+                <em className={styles.btcBacktestVerdict}>{signalQuality(signal, 'capital').label}</em>
               </div>
             ))}
           </div>
@@ -171,8 +194,8 @@ export default function BTCCalibrationBacktest() {
         <div>
           <strong>Lectura metodológica</strong>
           <p>
-            {data?.calibration?.provisionalConclusion
-              || 'Primero medimos cuánto tarda cada señal y cuánto patrimonio ya se habría devuelto. No se modifica la Constitución BTC hasta tener resultados completos.'}
+            El backtest ya muestra que <b>capital negativo no sirve como gatillo aislado</b>: en 2021 habría dado una alerta demasiado temprana y en 2017/2025 habría confirmado demasiado tarde.
+            Por eso no debe iniciar una salida; debe funcionar como evidencia complementaria dentro de una confluencia. MVRV sirve mejor como contexto de sobrecalentamiento que como reloj exacto.
           </p>
         </div>
       </div>
