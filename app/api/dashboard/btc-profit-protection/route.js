@@ -342,10 +342,25 @@ export async function GET() {
     const rows = await fetchHistory();
     const cycles = CYCLES.map((cycle) => analyzeCycle(rows, cycle)).filter(Boolean);
     const summary = summarize(cycles);
+    const diagnostics = {
+      rowCount: rows.length,
+      validMvrvRows: rows.filter((row) => Number.isFinite(row.mvrv)).length,
+      validRealizedCapRows: rows.filter((row) => Number.isFinite(row.realizedCap)).length,
+      cycleRows: Object.fromEntries(
+        CYCLES.map((cycle) => [
+          cycle.key,
+          rows.filter((row) => row.date >= cycle.start && row.date <= cycle.end).length,
+        ]),
+      ),
+      combinationsTested: summary.length,
+      combinationsWithAnyCycle: summary.filter((item) => item.cyclesTriggered > 0).length,
+      combinationsWithTwoOrMoreCycles: summary.filter((item) => item.cyclesTriggered >= 2).length,
+    };
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
       sourceStatus: 'live-backtest-v2',
+      diagnostics,
       methodology: {
         sequence: 'Contexto previo → cruce de drawdown → confirmación posterior',
         context: 'MVRV >= 2.4 en la ventana previa O capital débil (< +0.5% a 30d) al menos 7 días',
