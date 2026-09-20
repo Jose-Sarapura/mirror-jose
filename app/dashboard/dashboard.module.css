@@ -3798,3 +3798,160 @@
   font-weight: 800;
   line-height: 1.3;
 }
+
+
+/* BTC Profit Protection Lab */
+.btcProfitPanel {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid rgba(243,184,91,.14);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(243,184,91,.018), rgba(147,113,255,.015)),
+    var(--panel);
+}
+.btcProfitMethod {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+.btcProfitMethod > div {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.012);
+}
+.btcProfitMethod span,
+.btcProfitMethod strong,
+.btcProfitMethod small { display: block; }
+.btcProfitMethod span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.btcProfitMethod strong {
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.btcProfitMethod small {
+  margin-top: 4px;
+  color: #8190a1;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.btcProfitComparison {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.btcProfitColumn {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0,0,0,.08);
+}
+.btcProfitColumnTitle h3 {
+  margin: 4px 0 10px;
+  font-size: 15px;
+}
+.btcProfitColumn article {
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+}
+.btcProfitColumn article:first-of-type { border-top: 0; }
+.btcProfitColumn article > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btcProfitColumn article > div:first-child strong {
+  font-size: 9px;
+}
+.btcProfitMetrics {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+.btcProfitMetrics span {
+  color: #8391a2;
+  font-size: 7px;
+}
+.btcProfitMetrics b {
+  color: #cbd5df;
+  font-size: 8px;
+}
+.btcProfitCycles {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.btcProfitCyclesHead,
+.btcProfitCyclesRow {
+  display: grid;
+  grid-template-columns: .5fr .9fr 1.25fr 1.15fr .9fr .9fr;
+  min-width: 980px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.btcProfitCyclesHead {
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.btcProfitCyclesRow {
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.008);
+}
+.btcProfitCyclesRow:last-child { border-bottom: 0; }
+.btcProfitCyclesRow strong,
+.btcProfitCyclesRow small { display: block; }
+.btcProfitCyclesRow strong {
+  font-size: 9px;
+  line-height: 1.35;
+}
+.btcProfitCyclesRow small {
+  margin-top: 4px;
+  color: #7f8d9e;
+  font-size: 7px;
+}
+.btcProfitConclusion {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(243,184,91,.14);
+  border-radius: 12px;
+  background: rgba(243,184,91,.025);
+}
+.btcProfitConclusion svg {
+  flex: 0 0 auto;
+  color: #efc77f;
+}
+.btcProfitConclusion strong {
+  display: block;
+  font-size: 9px;
+}
+.btcProfitConclusion p {
+  margin: 5px 0 0;
+  color: #95a2b1;
+  font-size: 8px;
+  line-height: 1.5;
+}
+@media (max-width: 1050px) {
+  .btcProfitMethod { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .btcProfitComparison { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .btcProfitMethod,
+  .btcProfitMetrics { grid-template-columns: 1fr; }
+}
