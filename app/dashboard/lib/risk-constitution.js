@@ -57,6 +57,13 @@ export const RISK_CONSTITUTION = [
     text: 'Si una regla se modifica, debe quedar escrito qué evidencia cambió, quién cambia la regla y desde cuándo aplica.',
     type: 'principle',
   },
+  {
+    id: 'btc-exit-staged',
+    number: 9,
+    title: 'BTC se protege por etapas, nunca por una caída aislada',
+    text: 'La primera reducción es 25% solo con confluencia confirmada; una segunda reducción de 25% exige persistencia 7–14 días. El 50% restante requiere invalidación de tesis o deterioro prolongado. Toda reentrada también es escalonada.',
+    type: 'hard',
+  },
 ];
 
 export const DISCIPLINE_THRESHOLDS = {
