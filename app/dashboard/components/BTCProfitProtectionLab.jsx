@@ -69,8 +69,20 @@ export default function BTCProfitProtectionLab() {
     });
 
     const preferred = sorted.filter((item) => item.classification === 'Candidata a estudiar');
-    return (preferred.length ? preferred : sorted.filter((item) => item.cyclesTriggered >= 2)).slice(0, 6);
+    if (preferred.length) return preferred.slice(0, 6);
+
+    const multiCycle = sorted.filter((item) => item.cyclesTriggered >= 2);
+    if (multiCycle.length) return multiCycle.slice(0, 6);
+
+    // Si ninguna regla llega a 2/3 ciclos, no ocultamos el resultado:
+    // mostramos las mejores combinaciones solo para diagnóstico.
+    return sorted.slice(0, 6);
   }, [summary]);
+
+  const qualifiedCount = useMemo(
+    () => summary.filter((item) => item.cyclesTriggered >= 2).length,
+    [summary],
+  );
 
   const selectedKeys = new Set(candidates.slice(0, 4).map((item) => item.key));
 
@@ -150,6 +162,24 @@ export default function BTCProfitProtectionLab() {
           <p className={styles.kicker}>Candidatas para inspección</p>
           <h3>No es un ranking definitivo</h3>
         </div>
+
+        {data?.diagnostics && (
+          <div className={styles.cryptoGuardrail}>
+            <Icon name="info" size={15} />
+            <span>
+              <strong>Diagnóstico V2:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas.
+            </span>
+          </div>
+        )}
+
+        {summary.length > 0 && qualifiedCount === 0 && (
+          <div className={styles.cryptoGuardrail}>
+            <Icon name="info" size={15} />
+            <span>
+              <strong>El backtest sí devolvió resultados.</strong> Ninguna combinación activó al menos 2 de 3 ciclos. Las seis que aparecen abajo se muestran únicamente para diagnóstico y no son candidatas de salida.
+            </span>
+          </div>
+        )}
 
         <div className={styles.btcSequenceCandidateGrid}>
           {candidates.map((rule) => (
