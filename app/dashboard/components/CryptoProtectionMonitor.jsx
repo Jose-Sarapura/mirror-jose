@@ -134,7 +134,7 @@ export default function CryptoProtectionMonitor({ portfolio }) {
           <p className={styles.kicker}>Constitución Crypto · Protección</p>
           <h2>Preparar la salida antes de necesitarla</h2>
           <span className={styles.panelSubtitle}>
-            El drawdown activa revisión. Nunca vende por sí solo. Mirror registra cuánto patrimonio se devuelve desde el máximo observado.
+            El drawdown activa revisión. La protección BTC ya tiene Constitución escalonada: 25% + 25% y reserva estratégica del 50%.
           </span>
         </div>
         <span className={styles.reviewBadge}><Icon name="shield" size={15} /> Regla activa</span>
@@ -192,11 +192,11 @@ export default function CryptoProtectionMonitor({ portfolio }) {
         </div>
         <div>
           <strong>3</strong>
-          <span><b>Confluencia.</b> Reducir o salir requerirá deterioro conjunto de tesis, valoración/ciclo y estructura de mercado.</span>
+          <span><b>Reducción escalonada.</b> Primera protección 25%; segunda 25% solo si el deterioro persiste 7–14 días.</span>
         </div>
         <div>
           <strong>4</strong>
-          <span><b>Tesis invalidada.</b> Si cambia la razón estructural para poseer BTC, el precio deja de ser la variable principal.</span>
+          <span><b>Reserva + reentrada.</b> El 50% restante exige invalidación seria; lo vendido se recompra por etapas solo tras recuperación de estructura y demanda.</span>
         </div>
       </div>
 
