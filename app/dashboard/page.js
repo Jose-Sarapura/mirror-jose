@@ -24,6 +24,7 @@ import BTCHealthGate from './components/BTCHealthGate';
 import BTCCalibrationBacktest from './components/BTCCalibrationBacktest';
 import BTCProfitProtectionLab from './components/BTCProfitProtectionLab';
 import BTCHolderBehaviorLab from './components/BTCHolderBehaviorLab';
+import BTCETFDemandLab from './components/BTCETFDemandLab';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -321,6 +322,7 @@ export default function DashboardPage() {
           <BTCCalibrationBacktest />
           <BTCProfitProtectionLab />
           <BTCHolderBehaviorLab />
+          <BTCETFDemandLab />
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
