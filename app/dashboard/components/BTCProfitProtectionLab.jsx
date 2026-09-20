@@ -28,6 +28,10 @@ function pillClass(label) {
 }
 
 function confirmationLabel(type) {
+  if (type === 'capital_7d_negative') return 'Capital 7d negativo';
+  if (type === 'capital_7d_deterioration') return 'Capital 7d deteriora';
+  if (type === 'price_deeper_4pp') return 'Drawdown profundiza +4 pp';
+  if (type === 'price_below_3d') return '3 cierres bajo umbral';
   if (type === 'capital_negative') return 'Capital 30d negativo';
   if (type === 'capital_weak_7d') return 'Capital débil 7d';
   return '—';
@@ -90,10 +94,10 @@ export default function BTCProfitProtectionLab() {
     <section className={styles.btcProfitPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Profit Protection Lab · V2 secuencial</p>
-          <h2>Contexto → drawdown → confirmación</h2>
+          <p className={styles.kicker}>BTC Profit Protection Lab · V2.1</p>
+          <h2>Contexto → drawdown → confirmación rápida</h2>
           <span className={styles.panelSubtitle}>
-            Ya no exigimos que todas las señales coincidan el mismo día. Mirror prueba si una secuencia temporal protege mejor sin expulsarnos de correcciones normales.
+            V2 quedó descartado por confirmar demasiado tarde. V2.1 conserva el contexto y el drawdown, pero prueba confirmaciones más rápidas sin convertir una corrección normal en venta.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -129,7 +133,7 @@ export default function BTCProfitProtectionLab() {
           <span>3</span>
           <div>
             <strong>Confirmación posterior</strong>
-            <p>Capital 30d negativo o débil 7 días, dentro de 7/14/21 días después.</p>
+            <p>Dos familias: deterioro relativo de capital o persistencia/profundización del precio.</p>
           </div>
         </article>
       </div>
@@ -148,7 +152,7 @@ export default function BTCProfitProtectionLab() {
         <div>
           <span>Confirmación</span>
           <strong>7 · 14 · 21 días</strong>
-          <small>Busca deterioro de capital después del evento.</small>
+          <small>Capital relativo y estructura de precio se prueban por separado.</small>
         </div>
         <div>
           <span>Falso positivo</span>
@@ -167,7 +171,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>Diagnóstico V2:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas.
+              <strong>Diagnóstico V2.1:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas. V2 queda preservado como control: {data.diagnostics.legacyV2Combinations} combinaciones, {data.diagnostics.legacyV2WithTwoOrMoreCycles} con cobertura ≥2/3.
             </span>
           </div>
         )}
@@ -176,7 +180,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>El backtest sí devolvió resultados.</strong> Ninguna combinación activó al menos 2 de 3 ciclos. Las seis que aparecen abajo se muestran únicamente para diagnóstico y no son candidatas de salida.
+              <strong>El backtest V2.1 sí devolvió resultados.</strong> Si ninguna combinación alcanza al menos 2 de 3 ciclos, las seis que aparecen abajo se muestran solo para diagnóstico y no son candidatas de salida.
             </span>
           </div>
         )}
@@ -236,10 +240,10 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.btcProfitConclusion}>
         <Icon name="target" size={15} />
         <div>
-          <strong>Qué debe demostrar V2</strong>
+          <strong>Qué debe demostrar V2.1</strong>
           <p>
-            Una secuencia útil debe aparecer en al menos dos ciclos, mantener pocos falsos positivos y confirmar antes de que el daño patrimonial sea excesivo.
-            Si ninguna combinación logra ese equilibrio, no forzaremos una regla de salida con estos datos.
+            Una secuencia útil debe aparecer en al menos dos ciclos, mantener pocos falsos positivos y confirmar bastante antes que el V2 original.
+            Si la rapidez solo aumenta señales falsas, también se descarta: Mirror busca robustez, no una regla hecha para encajar con el pasado.
           </p>
         </div>
       </div>
