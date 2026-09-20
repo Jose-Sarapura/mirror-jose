@@ -30,6 +30,7 @@ import ETHCycleLab from './components/ETHCycleLab';
 import ETHHealthGate from './components/ETHHealthGate';
 import ETHExitConstitution from './components/ETHExitConstitution';
 import ETHProtectionMonitor from './components/ETHProtectionMonitor';
+import BTCETHComparison from './components/BTCETHComparison';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -37,6 +38,7 @@ import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
   const [active, setActive] = useState('overview');
+  const [intelligenceTab, setIntelligenceTab] = useState('btc');
   const [apiData, setApiData] = useState(null);
   const [settings, setSettings] = useState(createDefaultSettings);
   const [refreshing, setRefreshing] = useState(false);
@@ -314,54 +316,104 @@ export default function DashboardPage() {
 
       {active === 'intelligence' && (
         <section className={styles.pageSection}>
-          <div className={styles.pageTitle}><p className={styles.kicker}>Mirror Intelligence</p><h2>Qué significan tus números</h2><span>Interpretación automática según tu estrategia y costo de entrada.</span></div>
-          <DisciplineMode portfolio={portfolio} />
-          <DecisionJournal portfolio={portfolio} />
-          <LearningLoop />
-          <PortfolioHealthGate portfolio={portfolio} />
-          <RealExposure portfolio={portfolio} />
-          <CryptoExposure portfolio={portfolio} />
-          <CryptoProtectionMonitor portfolio={portfolio} />
-          <BTCCycleLab />
-          <BTCHealthGate />
-          <BTCExitConstitution />
-          <BTCCalibrationBacktest />
-          <BTCProfitProtectionLab />
-          <BTCHolderBehaviorLab />
-          <BTCETFDemandLab />
-          <ETHCycleLab />
-          <ETHHealthGate />
-          <ETHExitConstitution />
-          <ETHProtectionMonitor portfolio={portfolio} />
+          <div className={styles.pageTitle}>
+            <p className={styles.kicker}>Mirror Intelligence</p>
+            <h2>Inteligencia cripto por activo</h2>
+            <span>BTC y ETH mantienen motores de riesgo distintos; la comparación queda separada para no mezclar reglas.</span>
+          </div>
 
-          <section className={styles.riskLab}>
-            <div className={styles.panelHeader}>
-              <div><p className={styles.kicker}>Riesgo y corrección</p><h2>¿Cuánto puede doler una caída?</h2></div>
-              <span className={styles.reviewBadge}>Modo Corrección V3</span>
+          <div className={styles.intelligenceTabs}>
+            <button
+              type="button"
+              className={intelligenceTab === 'btc' ? styles.intelligenceTabActive : ''}
+              onClick={() => setIntelligenceTab('btc')}
+            >
+              BTC
+            </button>
+            <button
+              type="button"
+              className={intelligenceTab === 'eth' ? styles.intelligenceTabActive : ''}
+              onClick={() => setIntelligenceTab('eth')}
+            >
+              ETH
+            </button>
+            <button
+              type="button"
+              className={intelligenceTab === 'compare' ? styles.intelligenceTabActive : ''}
+              onClick={() => setIntelligenceTab('compare')}
+            >
+              BTC vs ETH
+            </button>
+          </div>
+
+          {intelligenceTab === 'btc' && (
+            <div className={styles.intelligenceTabContent}>
+              <CryptoProtectionMonitor portfolio={portfolio} />
+              <BTCHealthGate />
+              <BTCExitConstitution />
+              <BTCCycleLab />
+              <BTCCalibrationBacktest />
+              <BTCProfitProtectionLab />
+              <BTCHolderBehaviorLab />
+              <BTCETFDemandLab />
             </div>
-            <div className={styles.riskLabGrid}>
-              <article>
-                <span>SMH actual</span>
-                <strong>{smh ? smh.weight.toFixed(1) : '—'}%</strong>
-                <small>Objetivo máximo estratégico: 20%</small>
-              </article>
-              <article>
-                <span>Si SMH cae 50%</span>
-                <strong>-{smhStressImpact.toFixed(1)}%</strong>
-                <small>Impacto aproximado sobre la cartera por esa posición aislada.</small>
-              </article>
-              <article>
-                <span>Recuperación tras -50%</span>
-                <strong>+100%</strong>
-                <small>Recordatorio matemático: perder 50% exige duplicar para volver al origen.</small>
-              </article>
-              <article>
-                <span>Regla de corrección</span>
-                <strong>-10 / -15 / -20 / -25%</strong>
-                <small>Despliegue progresivo de liquidez; siempre priorizando asignación y tesis.</small>
-              </article>
+          )}
+
+          {intelligenceTab === 'eth' && (
+            <div className={styles.intelligenceTabContent}>
+              <ETHProtectionMonitor portfolio={portfolio} />
+              <ETHHealthGate />
+              <ETHExitConstitution />
+              <ETHCycleLab />
             </div>
-          </section>
+          )}
+
+          {intelligenceTab === 'compare' && (
+            <div className={styles.intelligenceTabContent}>
+              <BTCETHComparison portfolio={portfolio} />
+              <CryptoExposure portfolio={portfolio} />
+
+              <div className={styles.intelligenceSectionLabel}>
+                <p className={styles.kicker}>Contexto general Mirror</p>
+                <h3>Disciplina, exposición y aprendizaje</h3>
+              </div>
+
+              <DisciplineMode portfolio={portfolio} />
+              <PortfolioHealthGate portfolio={portfolio} />
+              <RealExposure portfolio={portfolio} />
+              <DecisionJournal portfolio={portfolio} />
+              <LearningLoop />
+
+              <section className={styles.riskLab}>
+                <div className={styles.panelHeader}>
+                  <div><p className={styles.kicker}>Riesgo y corrección</p><h2>¿Cuánto puede doler una caída?</h2></div>
+                  <span className={styles.reviewBadge}>Modo Corrección V3</span>
+                </div>
+                <div className={styles.riskLabGrid}>
+                  <article>
+                    <span>SMH actual</span>
+                    <strong>{smh ? smh.weight.toFixed(1) : '—'}%</strong>
+                    <small>Objetivo máximo estratégico: 20%</small>
+                  </article>
+                  <article>
+                    <span>Si SMH cae 50%</span>
+                    <strong>-{smhStressImpact.toFixed(1)}%</strong>
+                    <small>Impacto aproximado sobre la cartera por esa posición aislada.</small>
+                  </article>
+                  <article>
+                    <span>Recuperación tras -50%</span>
+                    <strong>+100%</strong>
+                    <small>Perder 50% exige duplicar para volver al origen.</small>
+                  </article>
+                  <article>
+                    <span>Regla de corrección</span>
+                    <strong>-10 / -15 / -20 / -25%</strong>
+                    <small>Despliegue progresivo de liquidez; priorizando asignación y tesis.</small>
+                  </article>
+                </div>
+              </section>
+            </div>
+          )}
         </section>
       )}
 
