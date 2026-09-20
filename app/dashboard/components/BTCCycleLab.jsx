@@ -170,7 +170,7 @@ export default function BTCCycleLab() {
         </div>
         <div>
           <Icon name="target" size={15} />
-          <span><strong>Pendiente:</strong> definir qué combinación y persistencia de señales justifica proteger, reducir o salir; todavía no fijamos porcentajes de venta.</span>
+          <span><strong>Pendiente:</strong> validar una familia realmente independiente —STH/LTH cost basis, demanda spot/ETF o comportamiento de holders— con datos históricos suficientes. No seguiremos afinando umbrales de precio, MVRV y Realized Cap para forzar una regla de salida.</span>
         </div>
       </div>
 
