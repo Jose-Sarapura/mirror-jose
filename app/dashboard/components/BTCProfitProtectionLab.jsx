@@ -94,10 +94,10 @@ export default function BTCProfitProtectionLab() {
     <section className={styles.btcProfitPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Profit Protection Lab · V2.1</p>
+          <p className={styles.kicker}>BTC Profit Protection Lab · V2.1.1</p>
           <h2>Contexto → drawdown → confirmación rápida</h2>
           <span className={styles.panelSubtitle}>
-            V2 quedó descartado por confirmar demasiado tarde. V2.1 conserva el contexto y el drawdown, pero prueba confirmaciones más rápidas sin convertir una corrección normal en venta.
+            V2 quedó descartado por confirmar demasiado tarde. V2.1.1 mantiene las confirmaciones rápidas, pero corrige cómo evaluamos las señales previas al máximo para no premiar falsas salidas tempranas.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -171,7 +171,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>Diagnóstico V2.1:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas. V2 queda preservado como control: {data.diagnostics.legacyV2Combinations} combinaciones, {data.diagnostics.legacyV2WithTwoOrMoreCycles} con cobertura ≥2/3.
+              <strong>Diagnóstico V2.1.1:</strong> {data.diagnostics.rowCount} precios · {data.diagnostics.validMvrvRows} filas MVRV · {data.diagnostics.validRealizedCapRows} filas de capital realizado · {data.diagnostics.combinationsTested} combinaciones probadas. V2 queda preservado como control: {data.diagnostics.legacyV2Combinations} combinaciones, {data.diagnostics.legacyV2WithTwoOrMoreCycles} con cobertura ≥2/3.
             </span>
           </div>
         )}
@@ -180,7 +180,7 @@ export default function BTCProfitProtectionLab() {
           <div className={styles.cryptoGuardrail}>
             <Icon name="info" size={15} />
             <span>
-              <strong>El backtest V2.1 sí devolvió resultados.</strong> Si ninguna combinación alcanza al menos 2 de 3 ciclos, las seis que aparecen abajo se muestran solo para diagnóstico y no son candidatas de salida.
+              <strong>El backtest V2.1.1 sí devolvió resultados.</strong> Si ninguna combinación alcanza al menos 2 de 3 ciclos, las seis que aparecen abajo se muestran solo para diagnóstico y no son candidatas de salida.
             </span>
           </div>
         )}
@@ -240,10 +240,10 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.btcProfitConclusion}>
         <Icon name="target" size={15} />
         <div>
-          <strong>Qué debe demostrar V2.1</strong>
+          <strong>Qué debe demostrar V2.1.1</strong>
           <p>
             Una secuencia útil debe aparecer en al menos dos ciclos, mantener pocos falsos positivos y confirmar bastante antes que el V2 original.
-            Si la rapidez solo aumenta señales falsas, también se descarta: Mirror busca robustez, no una regla hecha para encajar con el pasado.
+            Una señal previa al máximo solo cuenta como útil si deja como máximo 15% de subida hasta el techo final; así una corrección profunda previa ya no puede pasar por una buena detección.
           </p>
         </div>
       </div>
