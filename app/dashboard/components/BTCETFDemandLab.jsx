@@ -55,7 +55,7 @@ export default function BTCETFDemandLab() {
             Demanda ETF en vivo + estudio documentado del máximo 2025. Buscamos confirmación de régimen, no otro gatillo automático.
           </span>
         </div>
-        <span className={styles.reviewBadge}><Icon name="chart" size={15} /> Investigación · fuera del Gate</span>
+        <span className={styles.reviewBadge}><Icon name="chart" size={15} /> Confirmación secundaria</span>
       </div>
 
       {error && (
@@ -110,14 +110,14 @@ export default function BTCETFDemandLab() {
           <strong>Regla metodológica</strong>
           <p>
             El estudio 2025 indica que ETF no anticipó el máximo: la demanda seguía fuerte en el techo y se deterioró después.
-            Por eso esta familia encaja mejor como confirmación del cambio de régimen, nunca como gatillo único de salida.
+            En el Health Gate V3 solo se confirma debilidad ETF cuando la semana es negativa y BTC está bajo el ETF realized price. Nunca actúa sola.
           </p>
         </div>
       </div>
 
       <div className={styles.cryptoGuardrail}>
         <Icon name="shield" size={15} />
-        <span><strong>Sin cambio operativo:</strong> primero observamos si el deterioro ETF acompaña el cambio de régimen de 2025 y el estado actual. Recién después decidimos si merece entrar al Health Gate.</span>
+        <span><strong>Uso operativo limitado:</strong> ETF ya puede reforzar una confluencia de ≥2 señales núcleo, pero no puede iniciar Preparar protección ni una venta por sí sola.</span>
       </div>
     </section>
   );
