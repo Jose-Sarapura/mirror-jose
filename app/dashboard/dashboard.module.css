@@ -4074,3 +4074,108 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Intelligence sub-tabs */
+.intelligenceTabs {
+  position: sticky;
+  top: 74px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(8,12,18,.94);
+  backdrop-filter: blur(16px);
+}
+.intelligenceTabs button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #8d9bad;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.intelligenceTabs button:hover {
+  background: rgba(255,255,255,.025);
+  color: #dbe6f5;
+}
+.intelligenceTabs .intelligenceTabActive {
+  border-color: rgba(112,167,255,.28);
+  background: rgba(112,167,255,.1);
+  color: #dbe9ff;
+}
+.intelligenceTabContent > *:first-child { margin-top: 0; }
+.intelligenceSectionLabel {
+  margin: 28px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.intelligenceSectionLabel h3 {
+  margin: 5px 0 0;
+  font-size: 17px;
+}
+
+.cryptoCompareGrid {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.cryptoCompareGrid article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(255,255,255,.012);
+}
+.cryptoCompareGrid article:nth-child(-n+2) {
+  grid-column: span 2;
+}
+.cryptoCompareHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cryptoCompareGrid span,
+.cryptoCompareGrid strong,
+.cryptoCompareGrid small {
+  display: block;
+}
+.cryptoCompareGrid > article > span {
+  color: var(--muted);
+  font-size: 8px;
+}
+.cryptoCompareGrid h3 {
+  margin: 14px 0 6px;
+  font-size: 22px;
+}
+.cryptoCompareGrid p {
+  margin: 0 0 9px;
+  color: #a7b3c2;
+  font-size: 10px;
+}
+.cryptoCompareGrid small {
+  color: #8290a1;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.cryptoCompareGrid > article:nth-child(n+3) > strong {
+  margin-top: 8px;
+  font-size: 17px;
+}
+
+@media (max-width: 900px) {
+  .intelligenceTabs { top: 62px; }
+  .cryptoCompareGrid { grid-template-columns: 1fr 1fr; }
+  .cryptoCompareGrid article:nth-child(-n+2) { grid-column: span 1; }
+}
+@media (max-width: 620px) {
+  .intelligenceTabs { position: static; grid-template-columns: 1fr; }
+  .cryptoCompareGrid { grid-template-columns: 1fr; }
+}
