@@ -39,18 +39,18 @@ function diffDays(a, b) {
 }
 
 function classifyMvrv(value) {
-  if (!Number.isFinite(value) || value <= 0) return { status: 'Sin dato', tone: 'neutral', risk: false };
-  if (value >= 3.2) return { status: 'Extremo', tone: 'danger', risk: true };
-  if (value >= 2.4) return { status: 'Elevado', tone: 'watch', risk: true };
-  if (value < 1) return { status: 'Bajo costo agregado', tone: 'good', risk: false };
-  return { status: 'No extremo', tone: 'good', risk: false };
+  if (!Number.isFinite(value) || value <= 0) return { status: 'Sin dato', tone: 'neutral', risk: false, watch: false };
+  if (value >= 3.0) return { status: 'Sobrecalentado', tone: 'danger', risk: true, watch: true };
+  if (value >= 2.4) return { status: 'Elevado', tone: 'watch', risk: false, watch: true };
+  if (value < 1) return { status: 'Bajo costo agregado', tone: 'good', risk: false, watch: false };
+  return { status: 'No extremo', tone: 'good', risk: false, watch: false };
 }
 
 function classifyCapital(change30d) {
-  if (!Number.isFinite(change30d)) return { status: 'Sin dato', tone: 'neutral', risk: false };
-  if (change30d < -1) return { status: 'Contracción', tone: 'danger', risk: true };
-  if (change30d < 0.5) return { status: 'Débil', tone: 'watch', risk: true };
-  return { status: 'Expansión', tone: 'good', risk: false };
+  if (!Number.isFinite(change30d)) return { status: 'Sin dato', tone: 'neutral', risk: false, watch: false };
+  if (change30d < 0) return { status: 'Contracción', tone: 'danger', risk: true, watch: true };
+  if (change30d < 0.5) return { status: 'Expansión débil', tone: 'watch', risk: false, watch: true };
+  return { status: 'Expansión', tone: 'good', risk: false, watch: false };
 }
 
 function classifySth(price, basis) {
@@ -223,18 +223,27 @@ export async function GET() {
       sthState.status,
     );
 
-    const earlyRisks = [
-      mvrvState.risk,
-      capitalState.risk,
-    ].filter(Boolean).length;
+    const capitalRiskDays = capitalState.risk ? (capitalPersistence.days || 0) : 0;
+    const sthRiskDays = sthState.risk ? (sthPersistence.days || 0) : 0;
 
-    const operationalRisks = [
-      mvrvState.risk,
-      capitalState.risk,
+    // Calibration V1: price crossing a level creates attention; persistence creates confirmation.
+    const capitalConfirmedRisk = capitalState.risk && capitalRiskDays >= 14;
+    const capitalStrongRisk = capitalState.risk && capitalRiskDays >= 21;
+    const sthConfirmedRisk = sthState.risk && sthRiskDays >= 7;
+    const sthStrongRisk = sthState.risk && sthRiskDays >= 14;
+    const mvrvOverheated = mvrvState.risk;
+
+    const warningCount = [
+      mvrvState.watch,
+      capitalState.watch || capitalState.risk,
       sthState.risk,
     ].filter(Boolean).length;
 
-    const structuralConfirmation = sthState.risk && (sthPersistence.days || 0) >= 3;
+    const confirmedRisks = [
+      mvrvOverheated,
+      capitalConfirmedRisk,
+      sthConfirmedRisk,
+    ].filter(Boolean).length;
 
     const availability = {
       mvrv: Number.isFinite(mvrvValue) && mvrvValue > 0,
@@ -248,10 +257,10 @@ export async function GET() {
 
     let gate = {
       key: 'maintain',
-      label: operationalRisks === 0 ? 'Mantener' : 'Vigilancia',
-      explanation: operationalRisks === 0
-        ? 'Ninguna de las tres señales operativas está deteriorada.'
-        : 'Hay una señal que requiere seguimiento, pero todavía no existe confluencia suficiente.',
+      label: warningCount === 0 ? 'Mantener' : 'Vigilancia',
+      explanation: warningCount === 0
+        ? 'Las tres señales operativas permanecen estructuralmente sanas.'
+        : 'Hay señales de atención, pero todavía no han cumplido la persistencia necesaria para preparar protección.',
     };
 
     if (availableOperational < 3) {
@@ -260,17 +269,20 @@ export async function GET() {
         label: 'Datos incompletos',
         explanation: `Falta información operativa válida (${missingOperational.join(', ')}). Mirror no emite una lectura de Mantener/Proteger hasta recuperar esos datos.`,
       };
-    } else if (operationalRisks >= 2 && structuralConfirmation && earlyRisks >= 1) {
+    } else if (
+      (capitalStrongRisk && sthStrongRisk)
+      || (mvrvOverheated && capitalConfirmedRisk && sthConfirmedRisk)
+    ) {
       gate = {
         key: 'evaluate_protection',
         label: 'Protección a evaluar',
-        explanation: 'Coincide al menos una señal temprana con deterioro estructural persistente. Esto activa revisión; no una venta automática.',
+        explanation: 'Existe deterioro persistente y confirmado entre demanda y estructura, o una confluencia completa con sobrecalentamiento. Corresponde revisar protección; no vender automáticamente.',
       };
-    } else if (operationalRisks >= 2) {
+    } else if (confirmedRisks >= 2) {
       gate = {
         key: 'prepare',
         label: 'Preparar protección',
-        explanation: 'Dos señales operativas independientes están deterioradas. Mirror prepara el plan y espera confirmación suficiente antes de considerar reducción.',
+        explanation: 'Dos señales independientes ya superaron sus filtros de persistencia. Mirror prepara el plan, pero todavía no ejecuta una venta.',
       };
     }
 
@@ -286,6 +298,36 @@ export async function GET() {
         sthSnapshot: STH_SNAPSHOT.asOf,
       },
       gate,
+      calibration: {
+        version: 'V1',
+        mvrv: {
+          elevated: 2.4,
+          overheated: 3.0,
+          persistenceRule: 'El tiempo elevado no confirma salida por sí solo',
+        },
+        capital: {
+          riskThreshold30dPct: 0,
+          confirmDays: 14,
+          strongDays: 21,
+        },
+        sth: {
+          confirmDays: 7,
+          strongDays: 14,
+          note: 'Persistencia provisional mientras el cost basis sea snapshot híbrido',
+        },
+        logic: 'Cruce = atención; persistencia + confluencia = acción a evaluar',
+      },
+      diagnostics: {
+        warningCount,
+        confirmedRisks,
+        capitalRiskDays,
+        sthRiskDays,
+        capitalConfirmedRisk,
+        capitalStrongRisk,
+        sthConfirmedRisk,
+        sthStrongRisk,
+        mvrvOverheated,
+      },
       coverage: {
         operationalTotal: 3,
         availableOperational,
