@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const FARSIDE_URL = 'https://farside.co.uk/bitcoin-etf-flow-all-data/';
+const TFTC_URL = 'https://www.tftc.io/bitcoin-etf-flows/data.json';
 const COIN_METRICS = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
 
 function num(value) {
@@ -12,7 +12,7 @@ function num(value) {
 }
 
 function cleanText(value) {
-  return String(value || '')
+  return String(value ?? '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;|&#160;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -21,22 +21,80 @@ function cleanText(value) {
 }
 
 function parseFlow(value) {
+  if (Number.isFinite(Number(value))) return Number(value);
+
   const raw = cleanText(value);
   if (!raw || raw === '-' || raw === '–' || raw === '—') return 0;
-  const negative = /^\(.*\)$/.test(raw);
-  const numeric = Number(raw.replace(/[(),$]/g, '').replace(/,/g, ''));
+
+  const negative = /^\(.*\)$/.test(raw) || raw.startsWith('-') || raw.startsWith('−');
+  const multiplier = /b\b/i.test(raw) ? 1000 : 1;
+  const numeric = Number(
+    raw
+      .replace(/[()$,+]/g, '')
+      .replace(/−/g, '-')
+      .replace(/\s*(million|millions|m|billion|billions|b)\b/gi, '')
+  );
+
   if (!Number.isFinite(numeric)) return null;
-  return negative ? -numeric : numeric;
+  return Math.abs(numeric) * (negative ? -1 : 1) * multiplier;
 }
 
 function parseDate(value) {
+  if (value === null || value === undefined) return null;
   const raw = cleanText(value);
-  const match = raw.match(/^(\d{2})\s+([A-Za-z]{3})\s+(\d{4})$/);
-  if (!match) return null;
-  const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-  const month = months[match[2]];
-  if (month === undefined) return null;
-  return new Date(Date.UTC(Number(match[3]), month, Number(match[1]))).toISOString().slice(0, 10);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+
+  return null;
+}
+
+function findValue(obj, keys) {
+  for (const key of keys) {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, key)) return obj[key];
+  }
+  return undefined;
+}
+
+function normalizeEtfRecord(record, fallbackDate = null) {
+  if (!record || typeof record !== 'object') return null;
+
+  const date = parseDate(
+    findValue(record, ['date', 'Date', 'day', 'Day', 'time', 'timestamp', 'latestDate'])
+      ?? fallbackDate
+  );
+
+  const total = parseFlow(findValue(record, [
+    'total', 'Total', 'total_usdm', 'totalUsdm', 'total_usd_m',
+    'net_flow', 'netFlow', 'net_flow_usd_m', 'flow', 'Flow',
+    'daily_total', 'dailyTotal', 'aggregate', 'net'
+  ]));
+
+  if (!date || !Number.isFinite(total)) return null;
+  return { date, total };
+}
+
+function collectEtfRows(node, fallbackDate = null, rows = []) {
+  if (Array.isArray(node)) {
+    for (const item of node) collectEtfRows(item, null, rows);
+    return rows;
+  }
+
+  if (!node || typeof node !== 'object') return rows;
+
+  const direct = normalizeEtfRecord(node, fallbackDate);
+  if (direct) rows.push(direct);
+
+  for (const [key, value] of Object.entries(node)) {
+    const keyDate = parseDate(key);
+    if (value && typeof value === 'object') {
+      collectEtfRows(value, keyDate || null, rows);
+    }
+  }
+
+  return rows;
 }
 
 function sumLast(rows, n, endIndex = rows.length - 1) {
@@ -52,30 +110,24 @@ function findRowAtOrBefore(rows, date) {
   return { row: null, index: -1 };
 }
 
-async function fetchFarside() {
-  const response = await fetch(FARSIDE_URL, {
-    headers: { 'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0' },
+async function fetchEtfFlows() {
+  const response = await fetch(TFTC_URL, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0',
+      Accept: 'application/json',
+    },
     next: { revalidate: 3600 },
   });
-  if (!response.ok) throw new Error(`Farside HTTP ${response.status}`);
 
-  const html = await response.text();
-  const trMatches = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
-  const rows = [];
+  if (!response.ok) throw new Error(`TFTC ETF JSON HTTP ${response.status}`);
 
-  for (const tr of trMatches) {
-    const cells = [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((m) => m[1]);
-    if (cells.length < 2) continue;
-    const date = parseDate(cells[0]);
-    if (!date) continue;
-    const total = parseFlow(cells[cells.length - 1]);
-    if (!Number.isFinite(total)) continue;
-    rows.push({ date, total });
-  }
+  const payload = await response.json();
+  const collected = collectEtfRows(payload);
 
-  return rows
-    .filter((row, index, array) => index === array.findIndex((item) => item.date === row.date))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const byDate = new Map();
+  for (const row of collected) byDate.set(row.date, row);
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 async function fetchBtcPrices() {
@@ -146,15 +198,15 @@ function build2025Study(flowRows, priceRows) {
 
 export async function GET() {
   try {
-    const [flows, prices] = await Promise.all([fetchFarside(), fetchBtcPrices()]);
-    if (!flows.length) throw new Error('Farside no devolvió filas ETF parseables');
+    const [flows, prices] = await Promise.all([fetchEtfFlows(), fetchBtcPrices()]);
+    if (!flows.length) throw new Error('TFTC no devolvió filas ETF parseables');
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
       sourceStatus: 'live-etf-demand',
       methodology: {
         family: 'Demanda spot/ETF',
-        source: 'Farside Investors · Bitcoin ETF Flow All Data',
+        source: 'TFTC open JSON · SoSoValue/Farside/issuer disclosures',
         historyStarts: flows[0]?.date || '2024-01-11',
         limitation: 'Los ETF spot de EE.UU. comenzaron en 2024; esta familia no puede validarse contra 2017 o 2021.',
         gateImpact: 'Investigación solamente. No modifica BTC Health Gate.',
