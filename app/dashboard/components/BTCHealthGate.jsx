@@ -39,6 +39,13 @@ const DEFINITIONS = {
     independence: 'Media',
     explanation: 'Compara el precio actual con el costo medio de compradores recientes. El precio es vivo; el cost basis exacto permanece como snapshot hasta conectar una fuente de cohortes.',
   },
+  etf: {
+    name: 'Demanda ETF',
+    role: 'Demanda institucional',
+    timing: 'Confirmación secundaria',
+    independence: 'Media',
+    explanation: 'Los flujos ETF modernos no anticiparon el techo 2025. Mirror los usa solo para reforzar un deterioro ya confirmado por las señales núcleo.',
+  },
 };
 
 function readHistory() {
@@ -166,6 +173,7 @@ function modeLabel(mode) {
   if (mode === 'proxy') return 'Proxy vivo';
   if (mode === 'hybrid') return 'Híbrido';
   if (mode === 'snapshot') return 'Snapshot';
+  if (mode === 'secondary_live') return 'Secundaria viva';
   return 'Sin dato vivo';
 }
 
@@ -232,7 +240,7 @@ export default function BTCHealthGate() {
     [history],
   );
 
-  const operationalSignals = ['mvrv', 'capital', 'sth'].map((key) => ({
+  const operationalSignals = ['mvrv', 'capital', 'sth', 'etf'].map((key) => ({
     key,
     ...DEFINITIONS[key],
     ...(data?.signals?.[key] || {}),
@@ -248,10 +256,10 @@ export default function BTCHealthGate() {
     <section className={styles.btcHealthPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Health Gate · V2 dinámico</p>
-          <h2>Anticipación + confirmación + persistencia</h2>
+          <p className={styles.kicker}>BTC Health Gate · V3</p>
+          <h2>3 señales núcleo + confirmación ETF secundaria</h2>
           <span className={styles.panelSubtitle}>
-            Tres señales operativas alimentan el Health Gate. LTH permanece visible como pendiente, pero no modifica el estado hasta contar con una fuente válida.
+            MVRV, capital y STH forman el núcleo. ETF puede reforzar una protección ya formada, pero nunca elevar el Gate por sí solo. LTH sigue pendiente por calidad de datos.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -303,6 +311,9 @@ export default function BTCHealthGate() {
                 {signal.key === 'sth' && (
                   <><span>Precio vs. STH cost basis</span><strong>{fmt(signal.distancePct, 1)}%</strong></>
                 )}
+                {signal.key === 'etf' && (
+                  <><span>Semana ETF · BTC vs basis</span><strong>{fmt(signal.weeklyFlowUSDm, 1)}M · {fmt(signal.btcVsEtfBasisPct, 1)}%</strong></>
+                )}
               </div>
 
               <p>{signal.explanation}</p>
@@ -311,9 +322,11 @@ export default function BTCHealthGate() {
                 <span>
                   Persistencia:
                   <strong>{
-                    signal.sourceMode === 'unavailable'
-                      ? ' no disponible'
-                      : (signal.persistence?.days ? ' ' + signal.persistence.days + ' días' : ' iniciando registro')
+                    signal.key === 'etf'
+                      ? ' semanal'
+                      : signal.sourceMode === 'unavailable'
+                        ? ' no disponible'
+                        : (signal.persistence?.days ? ' ' + signal.persistence.days + ' días' : ' iniciando registro')
                   }</strong>
                 </span>
                 <span>
@@ -332,25 +345,25 @@ export default function BTCHealthGate() {
 
       <div className={styles.btcHealthDataQuality}>
         <div>
-          <span>Señales operativas disponibles</span>
+          <span>Señales núcleo disponibles</span>
           <strong>{data?.coverage?.availableOperational ?? '—'}/3</strong>
           <small>MVRV · capital · STH cost basis</small>
         </div>
         <div>
-          <span>Datos exactos vivos</span>
-          <strong>{data?.coverage?.exactLive ?? '—'}/3</strong>
-          <small>MVRV + entrada de capital</small>
+          <span>ETF secundaria</span>
+          <strong>{data?.coverage?.secondary ?? 0}/1</strong>
+          <small>Nunca cuenta como gatillo autónomo</small>
         </div>
         <div>
-          <span>Híbrido</span>
-          <strong>{data?.coverage?.hybrid ?? '—'}/3</strong>
-          <small>STH cost basis con precio vivo</small>
+          <span>Datos exactos vivos</span>
+          <strong>{data?.coverage?.exactLive ?? '—'}/3</strong>
+          <small>MVRV + capital; STH sigue híbrido</small>
         </div>
         <div>
           <span>Fechas de datos</span>
           <strong>{data?.dataDates?.price || data?.asOf || '—'}</strong>
           <small>
-            Precio {data?.dataDates?.price || '—'} · on-chain {data?.dataDates?.mvrv || data?.dataDates?.capital || '—'}
+            On-chain {data?.dataDates?.mvrv || data?.dataDates?.capital || '—'} · ETF {data?.dataDates?.etf || '—'}
           </small>
         </div>
       </div>
@@ -373,8 +386,8 @@ export default function BTCHealthGate() {
           <span>Solapamiento parcial. No se cuentan como dos alertas tempranas independientes: MVRV mira valoración macro y STH confirma régimen de compradores recientes.</span>
         </div>
         <div>
-          <strong>LTH ↔ entrada de capital</strong>
-          <span>Conceptualmente complementarios, pero LTH queda fuera del cálculo hasta tener una fuente válida. No puede subir por sí mismo el estado del Health Gate.</span>
+          <strong>Capital ↔ ETF</strong>
+          <span>Ambos observan demanda desde ángulos distintos. ETF es secundaria: puede reforzar una confluencia núcleo, pero no sustituye una tercera familia independiente.</span>
         </div>
       </div>
 
@@ -395,9 +408,9 @@ export default function BTCHealthGate() {
           <small>Provisional mientras el cost basis siga siendo híbrido/snapshot.</small>
         </div>
         <div>
-          <span>Filtro anti falso positivo</span>
-          <strong>2 señales confirmadas</strong>
-          <small>Protección real exige confluencia; un cruce aislado no basta.</small>
+          <span>ETF secundaria</span>
+          <strong>Semana negativa + BTC bajo basis ETF</strong>
+          <small>Solo refuerza Protección a evaluar si ya existen ≥2 señales núcleo confirmadas.</small>
         </div>
       </div>
 
@@ -409,7 +422,7 @@ export default function BTCHealthGate() {
         </article>
         <article className={data?.gate?.key === 'prepare' ? styles.btcStageActive : ''}>
           <span>🟡 Preparar protección</span>
-          <strong>≥2 señales operativas</strong>
+          <strong>≥2 señales núcleo confirmadas</strong>
           <p>Mirror prepara el plan, pero todavía no vende.</p>
         </article>
         <article className={data?.gate?.key === 'evaluate_protection' ? styles.btcStageActive : ''}>
@@ -440,8 +453,8 @@ export default function BTCHealthGate() {
         <div>
           <strong>Calidad de datos antes que falsa precisión</strong>
           <p>
-            MVRV y realized cap se actualizan desde Coin Metrics Community. LTH no participa del cálculo operativo hasta contar con una fuente de cohortes válida.
-            El STH cost basis mantiene el snapshot de investigación de {data?.signals?.sth?.snapshotDate || '16-09-2026'}
+            MVRV y realized cap se actualizan desde Coin Metrics Community. ETF se usa como confirmación secundaria desde Axel Adler Jr.; no puede activar protección sola.
+            LTH no participa hasta contar con una fuente de cohortes válida. El STH cost basis mantiene el snapshot de {data?.signals?.sth?.snapshotDate || '16-09-2026'}
             ({moneyUSD(data?.signals?.sth?.valueUSD)}), combinado con precio diario vivo.
           </p>
         </div>
