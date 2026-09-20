@@ -3622,3 +3622,162 @@
 @media (max-width: 620px) {
   .btcCalibrationStrip { grid-template-columns: 1fr; }
 }
+
+
+/* BTC Calibration Backtest */
+.btcBacktestPanel {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid rgba(147,113,255,.14);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(147,113,255,.018), rgba(112,167,255,.018)),
+    var(--panel);
+}
+.btcBacktestMethod {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+.btcBacktestMethod > div,
+.btcBacktestSummary article {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.012);
+}
+.btcBacktestMethod span,
+.btcBacktestMethod strong,
+.btcBacktestMethod small,
+.btcBacktestSummary span,
+.btcBacktestSummary strong,
+.btcBacktestSummary small { display: block; }
+.btcBacktestMethod span,
+.btcBacktestSummary span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.btcBacktestMethod strong,
+.btcBacktestSummary strong {
+  margin-top: 5px;
+  font-size: 10px;
+}
+.btcBacktestMethod small,
+.btcBacktestSummary small {
+  margin-top: 4px;
+  color: #8190a1;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.btcBacktestTable {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.btcBacktestHead,
+.btcBacktestRow {
+  display: grid;
+  grid-template-columns: .55fr .9fr .9fr .9fr .9fr .9fr .9fr;
+  min-width: 980px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.btcBacktestHead {
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.btcBacktestRow {
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.008);
+}
+.btcBacktestRow:last-child { border-bottom: 0; }
+.btcBacktestRow strong,
+.btcBacktestRow small { display: block; }
+.btcBacktestRow strong {
+  font-size: 9px;
+  line-height: 1.35;
+}
+.btcBacktestRow small {
+  margin-top: 4px;
+  color: #8290a0;
+  font-size: 7px;
+}
+.btcBacktestSummary {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.btcEventStudy {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0,0,0,.09);
+}
+.btcEventStudyTitle h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.btcEventStudy article {
+  display: grid;
+  grid-template-columns: .55fr 1.5fr 1.5fr;
+  gap: 12px;
+  align-items: start;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+}
+.btcEventStudy article:first-of-type { margin-top: 10px; }
+.btcEventStudy article > div strong,
+.btcEventStudy article > div span { display: block; }
+.btcEventStudy article > div strong { font-size: 10px; }
+.btcEventStudy article > div span {
+  margin-top: 4px;
+  color: #9ec2ff;
+  font-size: 7px;
+  font-weight: 800;
+}
+.btcEventStudy article p,
+.btcEventStudy article small {
+  margin: 0;
+  color: #97a4b3;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.btcEventStudy article small { color: #7f8c9c; }
+.btcBacktestConclusion {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(40,217,167,.14);
+  border-radius: 12px;
+  background: rgba(40,217,167,.025);
+}
+.btcBacktestConclusion svg {
+  flex: 0 0 auto;
+  color: #77e1c3;
+}
+.btcBacktestConclusion strong {
+  display: block;
+  font-size: 9px;
+}
+.btcBacktestConclusion p {
+  margin: 5px 0 0;
+  color: #96a3b2;
+  font-size: 8px;
+  line-height: 1.5;
+}
+@media (max-width: 900px) {
+  .btcBacktestMethod,
+  .btcBacktestSummary { grid-template-columns: 1fr; }
+  .btcEventStudy article { grid-template-columns: 1fr; }
+}
