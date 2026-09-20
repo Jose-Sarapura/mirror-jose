@@ -122,10 +122,26 @@ async function fetchCoinMetrics() {
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
 
-function valueAtOffset(series, field, offsetDays) {
-  const latestIndex = series.length - 1;
-  const index = Math.max(0, latestIndex - offsetDays);
-  return num(series[index]?.[field]);
+function latestValidRow(series, field, validator = (value) => Number.isFinite(value)) {
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const value = series[i]?.[field];
+    if (validator(value)) return series[i];
+  }
+  return null;
+}
+
+function valueAtOrBeforeDate(series, field, anchorTime, offsetDays) {
+  if (!anchorTime) return null;
+  const target = new Date(anchorTime);
+  target.setUTCDate(target.getUTCDate() - offsetDays);
+  const targetMs = target.getTime();
+
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const rowMs = new Date(series[i]?.time).getTime();
+    const value = series[i]?.[field];
+    if (rowMs <= targetMs && Number.isFinite(value)) return value;
+  }
+  return null;
 }
 
 function buildFallback() {
@@ -167,31 +183,40 @@ export async function GET() {
     const series = await fetchCoinMetrics();
     if (!series.length) return NextResponse.json(buildFallback());
 
-    const latest = series[series.length - 1];
-    const mvrvState = classifyMvrv(latest.mvrv);
+    const latestPriceRow = latestValidRow(series, 'price');
+    const latestMvrvRow = latestValidRow(series, 'mvrv', (value) => Number.isFinite(value) && value > 0);
+    const latestCapitalRow = latestValidRow(series, 'realizedCap', (value) => Number.isFinite(value) && value > 0);
 
-    const realized30 = valueAtOffset(series, 'realizedCap', 30);
-    const realized90 = valueAtOffset(series, 'realizedCap', 90);
-    const capitalChange30dPct = pctChange(latest.realizedCap, realized30);
-    const capitalChange90dPct = pctChange(latest.realizedCap, realized90);
+    const mvrvValue = latestMvrvRow?.mvrv ?? null;
+    const mvrvState = classifyMvrv(mvrvValue);
+
+    const realizedCapValue = latestCapitalRow?.realizedCap ?? null;
+    const realized30 = valueAtOrBeforeDate(series, 'realizedCap', latestCapitalRow?.time, 30);
+    const realized90 = valueAtOrBeforeDate(series, 'realizedCap', latestCapitalRow?.time, 90);
+    const capitalChange30dPct = pctChange(realizedCapValue, realized30);
+    const capitalChange90dPct = pctChange(realizedCapValue, realized90);
     const capitalState = classifyCapital(capitalChange30dPct);
 
-    const sthState = classifySth(latest.price, STH_SNAPSHOT.valueUSD);
+    const sthState = classifySth(latestPriceRow?.price, STH_SNAPSHOT.valueUSD);
 
     const mvrvPersistence = persistence(
-      series.filter((row) => Number.isFinite(row.mvrv)),
+      series.filter((row) => Number.isFinite(row.mvrv) && row.mvrv > 0),
       (row) => classifyMvrv(row.mvrv).status,
       mvrvState.status,
     );
+    const validCapitalSeries = series.filter((row) => Number.isFinite(row.realizedCap) && row.realizedCap > 0);
     const capitalPersistence = persistence(
-      series.map((row, index) => {
-        const compare = index >= 30 ? series[index - 30]?.realizedCap : null;
+      validCapitalSeries.map((row, index) => {
+        const compare = index >= 30 ? validCapitalSeries[index - 30]?.realizedCap : null;
         return { ...row, capitalChange30dPct: pctChange(row.realizedCap, compare) };
       }).filter((row) => Number.isFinite(row.capitalChange30dPct)),
       (row) => classifyCapital(row.capitalChange30dPct).status,
       capitalState.status,
     );
-    const sthSeries = series.filter((row) => new Date(row.time) >= new Date(`${STH_SNAPSHOT.asOf}T00:00:00Z`));
+    const sthSeries = series.filter((row) =>
+      Number.isFinite(row.price)
+      && new Date(row.time) >= new Date(`${STH_SNAPSHOT.asOf}T00:00:00Z`)
+    );
     const sthPersistence = persistence(
       sthSeries,
       (row) => classifySth(row.price, STH_SNAPSHOT.valueUSD).status,
@@ -212,7 +237,7 @@ export async function GET() {
     const structuralConfirmation = sthState.risk && (sthPersistence.days || 0) >= 3;
 
     const availability = {
-      mvrv: Number.isFinite(latest.mvrv) && latest.mvrv > 0,
+      mvrv: Number.isFinite(mvrvValue) && mvrvValue > 0,
       capital: Number.isFinite(capitalChange30dPct),
       sth: Number.isFinite(sthState.distancePct),
     };
@@ -251,9 +276,15 @@ export async function GET() {
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
-      asOf: latest.time?.slice(0, 10),
+      asOf: latestPriceRow?.time?.slice(0, 10) || latestCapitalRow?.time?.slice(0, 10) || latestMvrvRow?.time?.slice(0, 10),
       sourceStatus: 'live',
-      priceUSD: latest.price,
+      priceUSD: latestPriceRow?.price ?? null,
+      dataDates: {
+        price: latestPriceRow?.time?.slice(0, 10) || null,
+        mvrv: latestMvrvRow?.time?.slice(0, 10) || null,
+        capital: latestCapitalRow?.time?.slice(0, 10) || null,
+        sthSnapshot: STH_SNAPSHOT.asOf,
+      },
       gate,
       coverage: {
         operationalTotal: 3,
@@ -266,7 +297,8 @@ export async function GET() {
       signals: {
         mvrv: {
           ...mvrvState,
-          value: latest.mvrv,
+          value: mvrvValue,
+          asOf: latestMvrvRow?.time?.slice(0, 10) || null,
           sourceMode: 'live',
           sourceLabel: 'Coin Metrics Community · CapMVRVCur',
           persistence: mvrvPersistence,
@@ -282,9 +314,10 @@ export async function GET() {
         },
         capital: {
           ...capitalState,
-          realizedCapUSD: latest.realizedCap,
+          realizedCapUSD: realizedCapValue,
           change30dPct: capitalChange30dPct,
           change90dPct: capitalChange90dPct,
+          asOf: latestCapitalRow?.time?.slice(0, 10) || null,
           sourceMode: 'live',
           sourceLabel: 'Coin Metrics Community · realized cap derivado de Market Cap / MVRV',
           persistence: capitalPersistence,
@@ -295,6 +328,7 @@ export async function GET() {
           snapshotDate: STH_SNAPSHOT.asOf,
           trueMarketMeanUSD: TRUE_MARKET_MEAN_SNAPSHOT.valueUSD,
           distancePct: sthState.distancePct,
+          asOf: latestPriceRow?.time?.slice(0, 10) || null,
           sourceMode: 'hybrid',
           sourceLabel: 'Cost basis: snapshot Glassnode · precio: Coin Metrics diario',
           persistence: sthPersistence,
