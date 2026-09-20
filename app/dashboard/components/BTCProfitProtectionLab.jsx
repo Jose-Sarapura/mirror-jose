@@ -20,24 +20,17 @@ function usd(value) {
   }).format(n);
 }
 
-function ruleReading(rule) {
-  if (!rule) return { label: 'Sin datos', tone: 'neutral' };
-  if (rule.cyclesTriggered < 2) return { label: 'Cobertura insuficiente', tone: 'neutral' };
-  if (rule.falsePositives >= 3) return { label: 'Demasiado sensible', tone: 'watch' };
-  if (Number.isFinite(rule.averageDamageAtTriggerPct) && rule.averageDamageAtTriggerPct <= -15) {
-    return { label: 'Demasiado tardía', tone: 'danger' };
-  }
-  if (rule.falsePositives <= 1 && Number.isFinite(rule.averageDamageAtTriggerPct) && rule.averageDamageAtTriggerPct > -12) {
-    return { label: 'Prometedora para estudiar', tone: 'good' };
-  }
-  return { label: 'Trade-off intermedio', tone: 'watch' };
+function pillClass(label) {
+  if (label === 'Candidata a estudiar') return styles.successPill;
+  if (label === 'Demasiado tardía') return styles.btcDangerPill;
+  if (label === 'Demasiado sensible' || label === 'Trade-off intermedio') return styles.warningPill;
+  return styles.neutralPill;
 }
 
-function pillClass(tone) {
-  if (tone === 'good') return styles.successPill;
-  if (tone === 'danger') return styles.btcDangerPill;
-  if (tone === 'watch') return styles.warningPill;
-  return styles.neutralPill;
+function confirmationLabel(type) {
+  if (type === 'capital_negative') return 'Capital 30d negativo';
+  if (type === 'capital_weak_7d') return 'Capital débil 7d';
+  return '—';
 }
 
 export default function BTCProfitProtectionLab() {
@@ -50,7 +43,7 @@ export default function BTCProfitProtectionLab() {
     async function load() {
       try {
         const response = await fetch('/api/dashboard/btc-profit-protection', { cache: 'no-store' });
-        if (!response.ok) throw new Error('No fue posible ejecutar el backtest de protección');
+        if (!response.ok) throw new Error('No fue posible ejecutar el backtest secuencial');
         const payload = await response.json();
         if (cancelled) return;
         setData(payload);
@@ -66,17 +59,29 @@ export default function BTCProfitProtectionLab() {
 
   const summary = useMemo(() => data?.summary || [], [data]);
 
-  const oneContext = summary.filter((item) => item.context === 'any');
-  const twoContexts = summary.filter((item) => item.context === 'both');
+  const candidates = useMemo(() => {
+    const sorted = [...summary].sort((a, b) => {
+      if (a.cyclesTriggered !== b.cyclesTriggered) return b.cyclesTriggered - a.cyclesTriggered;
+      if (a.falsePositives !== b.falsePositives) return a.falsePositives - b.falsePositives;
+      const aDamage = Number.isFinite(a.averageDamageAtConfirmationPct) ? a.averageDamageAtConfirmationPct : -999;
+      const bDamage = Number.isFinite(b.averageDamageAtConfirmationPct) ? b.averageDamageAtConfirmationPct : -999;
+      return bDamage - aDamage;
+    });
+
+    const preferred = sorted.filter((item) => item.classification === 'Candidata a estudiar');
+    return (preferred.length ? preferred : sorted.filter((item) => item.cyclesTriggered >= 2)).slice(0, 6);
+  }, [summary]);
+
+  const selectedKeys = new Set(candidates.slice(0, 4).map((item) => item.key));
 
   return (
     <section className={styles.btcProfitPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>BTC Profit Protection Lab</p>
-          <h2>¿Cuánto drawdown podemos tolerar antes de preparar protección?</h2>
+          <p className={styles.kicker}>BTC Profit Protection Lab · V2 secuencial</p>
+          <h2>Contexto → drawdown → confirmación</h2>
           <span className={styles.panelSubtitle}>
-            El máximo usado es siempre el máximo conocido hasta ese día. No hay look-ahead. El objetivo es minimizar dos errores: salir demasiado pronto o reaccionar demasiado tarde.
+            Ya no exigimos que todas las señales coincidan el mismo día. Mirror prueba si una secuencia temporal protege mejor sin expulsarnos de correcciones normales.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -91,102 +96,108 @@ export default function BTCProfitProtectionLab() {
         </div>
       )}
 
+      <div className={styles.btcSequenceFlow}>
+        <article>
+          <span>1</span>
+          <div>
+            <strong>Contexto previo</strong>
+            <p>MVRV ≥ 2,4 o capital débil durante los 30/60 días anteriores.</p>
+          </div>
+        </article>
+        <i>→</i>
+        <article>
+          <span>2</span>
+          <div>
+            <strong>Evento</strong>
+            <p>BTC cruza -8%, -10% o -12% desde el máximo conocido hasta ese día.</p>
+          </div>
+        </article>
+        <i>→</i>
+        <article>
+          <span>3</span>
+          <div>
+            <strong>Confirmación posterior</strong>
+            <p>Capital 30d negativo o débil 7 días, dentro de 7/14/21 días después.</p>
+          </div>
+        </article>
+      </div>
+
       <div className={styles.btcProfitMethod}>
         <div>
-          <span>Drawdowns probados</span>
-          <strong>-5 · -8 · -10 · -12 · -15%</strong>
-          <small>Siempre desde máximo observado, no desde costo de compra.</small>
+          <span>Contexto previo</span>
+          <strong>30 o 60 días</strong>
+          <small>No necesita seguir activo el día exacto del drawdown.</small>
         </div>
         <div>
-          <span>Contexto mínimo</span>
-          <strong>MVRV ≥ 2,4 o capital débil</strong>
-          <small>Una caída sola nunca constituye una salida.</small>
+          <span>Drawdown probado</span>
+          <strong>-8 · -10 · -12%</strong>
+          <small>Desde máximo observado, nunca desde costo de compra.</small>
         </div>
         <div>
-          <span>Contexto fuerte</span>
-          <strong>MVRV + capital</strong>
-          <small>Se prueba también exigir ambas familias simultáneamente.</small>
+          <span>Confirmación</span>
+          <strong>7 · 14 · 21 días</strong>
+          <small>Busca deterioro de capital después del evento.</small>
         </div>
         <div>
-          <span>Muestra</span>
-          <strong>2017 · 2021 · 2025</strong>
-          <small>Sirve para descartar reglas frágiles, no para optimizar un número perfecto.</small>
+          <span>Falso positivo</span>
+          <strong>Luego recupera ATH</strong>
+          <small>Ventana ampliada a 270 días para capturar el doble techo de 2021.</small>
         </div>
       </div>
 
-      <div className={styles.btcProfitComparison}>
-        <div className={styles.btcProfitColumn}>
-          <div className={styles.btcProfitColumnTitle}>
-            <p className={styles.kicker}>1 contexto</p>
-            <h3>Más sensible</h3>
-          </div>
-          {oneContext.map((rule) => {
-            const reading = ruleReading(rule);
-            return (
-              <article key={rule.rule}>
-                <div>
-                  <strong>{rule.label}</strong>
-                  <span className={pillClass(reading.tone)}>{reading.label}</span>
-                </div>
-                <div className={styles.btcProfitMetrics}>
-                  <span>Ciclos detectados <b>{rule.cyclesTriggered}/3</b></span>
-                  <span>Falsos positivos <b>{rule.falsePositives}</b></span>
-                  <span>Daño medio al activar <b>{pct(rule.averageDamageAtTriggerPct)}</b></span>
-                  <span>Momento medio <b>{Number.isFinite(rule.averageDaysFromPeak) ? `${Math.round(rule.averageDaysFromPeak)} d` : '—'}</b></span>
-                </div>
-              </article>
-            );
-          })}
+      <div className={styles.btcSequenceCandidates}>
+        <div className={styles.btcProfitColumnTitle}>
+          <p className={styles.kicker}>Candidatas para inspección</p>
+          <h3>No es un ranking definitivo</h3>
         </div>
 
-        <div className={styles.btcProfitColumn}>
-          <div className={styles.btcProfitColumnTitle}>
-            <p className={styles.kicker}>2 contextos</p>
-            <h3>Más exigente</h3>
-          </div>
-          {twoContexts.map((rule) => {
-            const reading = ruleReading(rule);
-            return (
-              <article key={rule.rule}>
-                <div>
-                  <strong>{rule.label}</strong>
-                  <span className={pillClass(reading.tone)}>{reading.label}</span>
-                </div>
-                <div className={styles.btcProfitMetrics}>
-                  <span>Ciclos detectados <b>{rule.cyclesTriggered}/3</b></span>
-                  <span>Falsos positivos <b>{rule.falsePositives}</b></span>
-                  <span>Daño medio al activar <b>{pct(rule.averageDamageAtTriggerPct)}</b></span>
-                  <span>Momento medio <b>{Number.isFinite(rule.averageDaysFromPeak) ? `${Math.round(rule.averageDaysFromPeak)} d` : '—'}</b></span>
-                </div>
-              </article>
-            );
-          })}
+        <div className={styles.btcSequenceCandidateGrid}>
+          {candidates.map((rule) => (
+            <article key={rule.key}>
+              <div className={styles.btcSequenceCandidateTop}>
+                <strong>{rule.label}</strong>
+                <span className={pillClass(rule.classification)}>{rule.classification}</span>
+              </div>
+              <div className={styles.btcProfitMetrics}>
+                <span>Ciclos detectados <b>{rule.cyclesTriggered}/3</b></span>
+                <span>Falsos positivos <b>{rule.falsePositives}</b></span>
+                <span>Daño medio <b>{pct(rule.averageDamageAtConfirmationPct)}</b></span>
+                <span>Peor daño <b>{pct(rule.worstDamageAtConfirmationPct)}</b></span>
+              </div>
+            </article>
+          ))}
+          {!candidates.length && (
+            <article>
+              <strong>Esperando resultados</strong>
+              <p>El backtest secuencial todavía no ha devuelto combinaciones comparables.</p>
+            </article>
+          )}
         </div>
       </div>
 
       <div className={styles.btcProfitCycles}>
-        <div className={styles.btcProfitCyclesHead}>
+        <div className={styles.btcSequenceCyclesHead}>
           <span>Ciclo</span>
           <span>Máximo</span>
-          <span>Regla</span>
-          <span>Primera señal cerca del techo</span>
-          <span>Daño al activar</span>
-          <span>¿Recuperó nuevo máximo?</span>
+          <span>Secuencia</span>
+          <span>Contexto</span>
+          <span>Drawdown</span>
+          <span>Confirmación</span>
+          <span>Daño al confirmar</span>
         </div>
+
         {(data?.cycles || []).flatMap((cycle) =>
           (cycle.rules || [])
-            .filter((rule) => ['dd8_any', 'dd10_any', 'dd12_any', 'dd10_both'].includes(rule.rule))
+            .filter((rule) => selectedKeys.has(rule.key))
             .map((rule) => (
-              <div className={styles.btcProfitCyclesRow} key={`${cycle.cycle}-${rule.rule}`}>
+              <div className={styles.btcSequenceCyclesRow} key={`${cycle.cycle}-${rule.key}`}>
                 <div><strong>{cycle.cycle}</strong><small>{cycle.peak?.date}</small></div>
                 <div><strong>{usd(cycle.peak?.price)}</strong><small>MVRV {Number.isFinite(cycle.peak?.mvrv) ? Number(cycle.peak.mvrv).toFixed(2) : '—'}</small></div>
-                <div><strong>{rule.label}</strong><small>{rule.falsePositives} falsos positivos previos</small></div>
-                <div><strong>{rule.topTrigger?.date || 'No activó'}</strong><small>{rule.topTrigger ? `${rule.topTrigger.daysFromPeak} d desde máximo` : '—'}</small></div>
-                <div><strong>{rule.topTrigger ? pct(rule.topTrigger.drawdownPct) : '—'}</strong><small>{rule.topTrigger ? usd(rule.topTrigger.price) : '—'}</small></div>
-                <div>
-                  <strong>{rule.topTrigger?.recovery?.recovered ? 'Sí' : (rule.topTrigger ? 'No' : '—')}</strong>
-                  <small>{rule.topTrigger?.recovery?.recovered ? `en ${rule.topTrigger.recovery.days} días` : '120 días'}</small>
-                </div>
+                <div><strong>{rule.label}</strong><small>{rule.falsePositives} falsos positivos</small></div>
+                <div><strong>{rule.topTrigger?.contextDate || '—'}</strong><small>ventana previa</small></div>
+                <div><strong>{rule.topTrigger?.eventDate || 'No activó'}</strong><small>{rule.topTrigger ? pct(rule.topTrigger.eventDrawdownPct) : '—'}</small></div>
+                <div><strong>{rule.topTrigger?.confirmDate || '—'}</strong><small>{confirmationLabel(rule.topTrigger?.confirmationType)}</small></div>
+                <div><strong>{rule.topTrigger ? pct(rule.topTrigger.damageAtConfirmationPct) : '—'}</strong><small>{rule.topTrigger ? `${rule.topTrigger.daysFromPeak} d desde máximo` : '—'}</small></div>
               </div>
             ))
         )}
@@ -195,11 +206,10 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.btcProfitConclusion}>
         <Icon name="target" size={15} />
         <div>
-          <strong>Qué estamos buscando</strong>
+          <strong>Qué debe demostrar V2</strong>
           <p>
-            No queremos el porcentaje que “adivina” mejor el máximo. Queremos una zona de drawdown que aparezca suficientemente pronto
-            para proteger patrimonio, pero que necesite contexto suficiente para no expulsarnos de correcciones normales.
-            Ninguna regla de este laboratorio modifica todavía Mantener / Preparar / Proteger.
+            Una secuencia útil debe aparecer en al menos dos ciclos, mantener pocos falsos positivos y confirmar antes de que el daño patrimonial sea excesivo.
+            Si ninguna combinación logra ese equilibrio, no forzaremos una regla de salida con estos datos.
           </p>
         </div>
       </div>
@@ -207,8 +217,8 @@ export default function BTCProfitProtectionLab() {
       <div className={styles.cryptoGuardrail}>
         <Icon name="info" size={15} />
         <span>
-          <strong>Siguiente criterio:</strong> si varios umbrales ofrecen resultados similares, Mirror preferirá el más simple y conservador.
-          Con solo tres ciclos no aceptaremos una precisión aparente que no pueda defenderse fuera de muestra.
+          <strong>Regla metodológica:</strong> este laboratorio puede descartar parámetros, pero todavía no autoriza vender BTC.
+          La eventual Constitución de salida exigirá además tesis, estructura y plan de reentrada.
         </span>
       </div>
     </section>
