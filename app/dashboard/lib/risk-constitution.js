@@ -64,6 +64,13 @@ export const RISK_CONSTITUTION = [
     text: 'La primera reducción es 25% solo con confluencia confirmada; una segunda reducción de 25% exige persistencia 7–14 días. El 50% restante requiere invalidación de tesis o deterioro prolongado. Toda reentrada también es escalonada.',
     type: 'hard',
   },
+  {
+    id: 'eth-exit-network-gate',
+    number: 10,
+    title: 'ETH exige deterioro de red antes de escalar protección',
+    text: 'Una caída o MVRV alto no bastan. La primera reducción de 25% requiere deterioro confirmado de actividad de red, otra señal núcleo y un refuerzo de valoración o ETF. La segunda reducción exige 7–14 días de persistencia.',
+    type: 'hard',
+  },
 ];
 
 export const DISCIPLINE_THRESHOLDS = {
