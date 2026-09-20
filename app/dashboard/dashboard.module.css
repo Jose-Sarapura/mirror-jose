@@ -3542,3 +3542,44 @@
   .btcHealthDataQuality,
   .btcPersistence { grid-template-columns: 1fr; }
 }
+
+
+/* BTC Health Gate V2.1 - LTH pending */
+.btcHealthSignalGrid {
+  grid-template-columns: repeat(3,minmax(0,1fr));
+}
+.btcPendingSignal {
+  display: grid;
+  grid-template-columns: .75fr 1.6fr;
+  gap: 18px;
+  align-items: start;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 13px;
+  background: rgba(255,255,255,.01);
+}
+.btcPendingSignal h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.btcPendingSignal > div:last-child {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+.btcPendingSignal p {
+  margin: 0;
+  color: #95a2b2;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.btcPendingSignal small {
+  color: #7d8a9b;
+  font-size: 7px;
+  line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .btcHealthSignalGrid { grid-template-columns: 1fr; }
+  .btcPendingSignal { grid-template-columns: 1fr; }
+}
