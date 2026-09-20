@@ -66,7 +66,7 @@ export default function BTCETFDemandLab() {
       )}
 
       <div className={styles.btcBacktestMethod}>
-        <div><span>Fuente</span><strong>TFTC · open JSON</strong><small>SoSoValue + Farside + disclosures de emisores</small></div>
+        <div><span>Fuente</span><strong>Farside Investors</strong><small>Lectura vía Jina Reader</small></div>
         <div><span>Historia disponible</span><strong>Desde 2024</strong><small>No existe para 2017/2021</small></div>
         <div><span>Uso</span><strong>Confirmación moderna</strong><small>No puede ser una regla universal de ciclo por sí sola</small></div>
       </div>
