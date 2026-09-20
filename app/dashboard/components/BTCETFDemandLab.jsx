@@ -52,7 +52,7 @@ export default function BTCETFDemandLab() {
           <p className={styles.kicker}>BTC Independent Evidence Lab · spot/ETF</p>
           <h2>¿La demanda institucional añade confirmación útil?</h2>
           <span className={styles.panelSubtitle}>
-            Flujos netos diarios de ETF spot de EE.UU. desde 2024. Es una familia de demanda distinta de MVRV, precio y Realized Cap.
+            Demanda ETF en vivo + estudio documentado del máximo 2025. Buscamos confirmación de régimen, no otro gatillo automático.
           </span>
         </div>
         <span className={styles.reviewBadge}><Icon name="chart" size={15} /> Investigación · fuera del Gate</span>
@@ -66,17 +66,17 @@ export default function BTCETFDemandLab() {
       )}
 
       <div className={styles.btcBacktestMethod}>
-        <div><span>Fuente</span><strong>Farside Investors</strong><small>Lectura vía Jina Reader</small></div>
-        <div><span>Historia disponible</span><strong>Desde 2024</strong><small>No existe para 2017/2021</small></div>
-        <div><span>Uso</span><strong>Confirmación moderna</strong><small>No puede ser una regla universal de ciclo por sí sola</small></div>
+        <div><span>Dato vivo</span><strong>Axel Adler Jr.</strong><small>BTC US ETF Flow Monitor</small></div>
+        <div><span>Estudio histórico</span><strong>Farside Investors</strong><small>Máximo 2025 y deterioro posterior</small></div>
+        <div><span>Uso</span><strong>Confirmación moderna</strong><small>No existe para 2017/2021</small></div>
       </div>
 
       {current && (
         <div className={styles.btcBacktestSummary}>
-          <article><span>Último día</span><strong>{moneyM(current.latestDailyFlowUSDm)}</strong><small>{current.asOf}</small></article>
-          <article><span>Flujo 5 sesiones</span><strong>{moneyM(current.flow5dUSDm)}</strong><small>Demanda muy reciente</small></article>
-          <article><span>Flujo 20 sesiones</span><strong>{moneyM(current.flow20dUSDm)}</strong><small>{current.negativeDays20} días negativos</small></article>
-          <article><span>Flujo 60 sesiones</span><strong>{moneyM(current.flow60dUSDm)}</strong><small>Contexto de demanda</small></article>
+          <article><span>Último día</span><strong>{moneyM(current.latestDailyFlowUSDm)}</strong><small>{current.asOf || '—'}</small></article>
+          <article><span>Última semana</span><strong>{moneyM(current.flow5dUSDm)}</strong><small>Demanda agregada reciente</small></article>
+          <article><span>Flujo acumulado</span><strong>{moneyM(current.allTimeFlowUSDm)}</strong><small>Desde enero 2024</small></article>
+          <article><span>BTC vs basis ETF</span><strong>{Number.isFinite(current.btcVsEtfBasisPct) ? `${current.btcVsEtfBasisPct.toFixed(1)}%` : '—'}</strong><small>{current.etfRealizedPriceUSD ? `Basis ETF ${usd(current.etfRealizedPriceUSD)}` : 'Contexto de posicionamiento'}</small></article>
         </div>
       )}
 
@@ -84,22 +84,22 @@ export default function BTCETFDemandLab() {
         <div className={styles.btcEventStudy}>
           <div className={styles.btcEventStudyTitle}>
             <p className={styles.kicker}>Event study · máximo 2025</p>
-            <h3>Demanda ETF alrededor del techo moderno</h3>
+            <h3>ETF no anticipó el techo; confirmó después</h3>
           </div>
           <article>
             <div><strong>Máximo BTC</strong><span>{study.peak?.date || '—'}</span></div>
-            <p>{usd(study.peak?.price)}</p>
-            <small>Máximo de precio identificado con Coin Metrics.</small>
+            <p>{usd(study.peak?.priceUSD)}</p>
+            <small>Máximo usado por Mirror para el estudio 2025.</small>
           </article>
           <article>
-            <div><strong>ETF 20 sesiones</strong><span>{study.flowAtPeak?.date || '—'}</span></div>
-            <p>{moneyM(study.flowAtPeak?.rolling20USDm)}</p>
-            <small>{study.flowAtPeak ? `${study.flowAtPeak.negativeDays20} sesiones negativas de 20` : 'Sin dato ETF'}</small>
+            <div><strong>ETF en el máximo</strong><span>{study.peak?.date || '—'}</span></div>
+            <p>{moneyM(study.atPeak?.dailyFlowUSDm)}</p>
+            <small>{study.atPeak?.reading || '—'}</small>
           </article>
           <article>
-            <div><strong>ETF 60 sesiones</strong><span>contexto</span></div>
-            <p>{moneyM(study.flowAtPeak?.rolling60USDm)}</p>
-            <small>Sirve para comparar demanda acumulada, no para fijar un gatillo.</small>
+            <div><strong>Después del máximo</strong><span>deterioro</span></div>
+            <p>{study.afterPeak?.filter((item) => item.flowUSDm < 0).length || 0} sesiones negativas destacadas</p>
+            <small>{study.conclusion || '—'}</small>
           </article>
         </div>
       )}
@@ -109,8 +109,8 @@ export default function BTCETFDemandLab() {
         <div>
           <strong>Regla metodológica</strong>
           <p>
-            Esta familia puede mejorar la lectura de demanda desde 2024, pero no puede validarse en 2017/2021.
-            Por eso podrá actuar como confirmación complementaria del régimen moderno, nunca como gatillo único de salida.
+            El estudio 2025 indica que ETF no anticipó el máximo: la demanda seguía fuerte en el techo y se deterioró después.
+            Por eso esta familia encaja mejor como confirmación del cambio de régimen, nunca como gatillo único de salida.
           </p>
         </div>
       </div>
