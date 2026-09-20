@@ -68,7 +68,7 @@ function recordChanges(data) {
         status: signal.status,
         tone: signal.tone,
         value: signal.value ?? signal.valueUSD ?? signal.change30dPct ?? null,
-        asOf: data.asOf,
+        asOf: signal.asOf || data.asOf,
         recordedAt: new Date().toISOString(),
       });
     }
@@ -269,6 +269,7 @@ export default function BTCHealthGate() {
                 <span>{signal.timing}</span>
                 <span>Independencia {signal.independence}</span>
                 <span>{modeLabel(signal.sourceMode)}</span>
+                {signal.asOf && <span>Dato al {signal.asOf}</span>}
               </div>
 
               <div className={styles.btcLiveMetric}>
@@ -325,9 +326,11 @@ export default function BTCHealthGate() {
           <small>STH cost basis con precio vivo</small>
         </div>
         <div>
-          <span>Fecha de datos</span>
-          <strong>{data?.asOf || '—'}</strong>
-          <small>{data?.sourceStatus === 'live' ? 'Actualización diaria pública' : 'Modo respaldo'}</small>
+          <span>Fechas de datos</span>
+          <strong>{data?.dataDates?.price || data?.asOf || '—'}</strong>
+          <small>
+            Precio {data?.dataDates?.price || '—'} · on-chain {data?.dataDates?.mvrv || data?.dataDates?.capital || '—'}
+          </small>
         </div>
       </div>
 
@@ -379,7 +382,7 @@ export default function BTCHealthGate() {
 
       <div className={styles.btcHealthCurrent}>
         <div>
-          <p className={styles.kicker}>Lectura automática · {data?.asOf || 'actualizando'}</p>
+          <p className={styles.kicker}>Lectura automática · precio {data?.dataDates?.price || data?.asOf || 'actualizando'} · on-chain {data?.dataDates?.mvrv || data?.dataDates?.capital || '—'}</p>
           <h3>{data?.gate?.label || 'Actualizando señales'}</h3>
         </div>
         <p>
