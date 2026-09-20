@@ -245,6 +245,13 @@ export default function BTCHealthGate() {
         </div>
       )}
 
+      {data?.gate?.key === 'insufficient_data' && (
+        <div className={styles.btcHealthError}>
+          <Icon name="info" size={14} />
+          <span>{data.gate.explanation}</span>
+        </div>
+      )}
+
       <div className={styles.btcHealthSignalGrid}>
         {operationalSignals.map((signal) => {
           const change = lastChanges[signal.key];
@@ -303,8 +310,8 @@ export default function BTCHealthGate() {
 
       <div className={styles.btcHealthDataQuality}>
         <div>
-          <span>Señales operativas</span>
-          <strong>3</strong>
+          <span>Señales operativas disponibles</span>
+          <strong>{data?.coverage?.availableOperational ?? '—'}/3</strong>
           <small>MVRV · capital · STH cost basis</small>
         </div>
         <div>
