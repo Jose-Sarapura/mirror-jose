@@ -269,6 +269,66 @@ function extractFastSequenceEpisodes(rows, rule) {
   return episodes;
 }
 
+function findDualConfirmation(rows, eventIndex, rule) {
+  const capital = findFastConfirmation(rows, eventIndex, {
+    ...rule,
+    confirmationFamily: 'capital_relative',
+  });
+  const priceStructure = findFastConfirmation(rows, eventIndex, {
+    ...rule,
+    confirmationFamily: 'price_structure',
+  });
+
+  if (!capital.found || !priceStructure.found) return { found: false };
+
+  const later = capital.index >= priceStructure.index ? capital : priceStructure;
+
+  return {
+    found: true,
+    date: later.date,
+    index: later.index,
+    type: 'dual_confirmation',
+    price: rows[later.index]?.price,
+    capital,
+    priceStructure,
+    daysBetweenConfirmations: Math.abs(capital.index - priceStructure.index),
+  };
+}
+
+function extractDualSequenceEpisodes(rows, rule) {
+  const episodes = [];
+  let inDrawdown = false;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    const prev = rows[i - 1];
+    const crossed = prev.drawdownPct > rule.drawdown && row.drawdownPct <= rule.drawdown;
+
+    if (crossed && !inDrawdown) {
+      const context = hadPriorContext(rows, i, rule.contextWindow);
+      if (context.ok) {
+        const confirmation = findDualConfirmation(rows, i, rule);
+        if (confirmation.found) {
+          episodes.push({
+            eventDate: row.date,
+            eventIndex: i,
+            eventPrice: row.price,
+            eventDrawdownPct: row.drawdownPct,
+            highWater: row.highWater,
+            context,
+            confirmation,
+          });
+        }
+      }
+      inDrawdown = true;
+    }
+
+    if (row.drawdownPct > rule.drawdown / 2) inDrawdown = false;
+  }
+
+  return episodes;
+}
+
 function futureNewHigh(rows, index, highWater, days = 270) {
   const end = Math.min(rows.length - 1, index + days);
   for (let i = index + 1; i <= end; i += 1) {
@@ -367,6 +427,26 @@ function buildFastRules() {
 }
 
 const FAST_RULES = buildFastRules();
+
+function buildDualRules() {
+  const rules = [];
+  for (const drawdown of DRAWDOWNS) {
+    for (const contextWindow of CONTEXT_WINDOWS) {
+      for (const confirmWindow of CONFIRM_WINDOWS) {
+        rules.push({
+          key: `v22_dd${Math.abs(drawdown)}_ctx${contextWindow}_cf${confirmWindow}`,
+          label: `DD ${drawdown}% · ctx ${contextWindow}d · doble confirma ≤${confirmWindow}d`,
+          drawdown,
+          contextWindow,
+          confirmWindow,
+        });
+      }
+    }
+  }
+  return rules;
+}
+
+const DUAL_RULES = buildDualRules();
 
 function analyzeRule(rows, peak, rule) {
   const episodes = extractSequenceEpisodes(rows, rule);
@@ -580,6 +660,117 @@ function summarizeFast(cycles) {
   });
 }
 
+
+function analyzeDualRule(rows, peak, rule) {
+  const episodes = extractDualSequenceEpisodes(rows, rule);
+
+  const falsePositives = episodes.filter((episode) => {
+    const confirmationDate = new Date(`${episode.confirmation.date}T00:00:00Z`);
+    const peakDate = new Date(`${peak.date}T00:00:00Z`);
+    if (confirmationDate >= peakDate) return false;
+
+    const recovered = futureNewHigh(rows, episode.confirmation.index, episode.highWater, 270).recovered;
+    const missedUpsidePct = upsideToPeak(episode.confirmation.price, peak.price);
+
+    return recovered && Number.isFinite(missedUpsidePct) && missedUpsidePct > 15;
+  });
+
+  const topTrigger = episodes.find((episode) => isAcceptableTopTrigger(episode, peak)) || null;
+
+  let detail = null;
+  if (topTrigger) {
+    const confirmationRow = rows[topTrigger.confirmation.index];
+    detail = {
+      contextDate: topTrigger.context.firstDate,
+      eventDate: topTrigger.eventDate,
+      confirmDate: topTrigger.confirmation.date,
+      confirmationType: topTrigger.confirmation.type,
+      capitalConfirmDate: topTrigger.confirmation.capital?.date || null,
+      capitalConfirmType: topTrigger.confirmation.capital?.type || null,
+      priceConfirmDate: topTrigger.confirmation.priceStructure?.date || null,
+      priceConfirmType: topTrigger.confirmation.priceStructure?.type || null,
+      daysBetweenConfirmations: topTrigger.confirmation.daysBetweenConfirmations,
+      daysFromPeak: daysBetween(peak.date, topTrigger.confirmation.date),
+      eventDrawdownPct: topTrigger.eventDrawdownPct,
+      damageAtConfirmationPct: ((confirmationRow.price / peak.price) - 1) * 100,
+      missedUpsideToPeakPct: topTrigger.confirmation.date < peak.date
+        ? upsideToPeak(confirmationRow.price, peak.price)
+        : 0,
+      priceAtConfirmation: confirmationRow.price,
+      capital7dPct: confirmationRow.capital7dPct,
+      recoveredNewHigh: futureNewHigh(rows, topTrigger.confirmation.index, topTrigger.highWater, 270),
+      futureRisk: futureWorstDrawdown(rows, topTrigger.confirmation.index, 120),
+    };
+  }
+
+  return {
+    ...rule,
+    totalEpisodes: episodes.length,
+    falsePositives: falsePositives.length,
+    topTrigger: detail,
+  };
+}
+
+function analyzeDualCycle(allRows, cycle) {
+  const rows = enrichCycle(allRows.filter((row) => row.date >= cycle.start && row.date <= cycle.end));
+  if (!rows.length) return null;
+
+  const peak = rows.reduce((best, row) => row.price > best.price ? row : best, rows[0]);
+
+  return {
+    cycle: cycle.key,
+    peak: {
+      date: peak.date,
+      price: peak.price,
+      mvrv: peak.mvrv,
+    },
+    rules: DUAL_RULES.map((rule) => analyzeDualRule(rows, peak, rule)),
+  };
+}
+
+function summarizeDual(cycles) {
+  return DUAL_RULES.map((rule) => {
+    const perCycle = cycles
+      .map((cycle) => cycle.rules.find((item) => item.key === rule.key))
+      .filter(Boolean);
+
+    const triggers = perCycle.filter((item) => item.topTrigger);
+    const falsePositives = perCycle.reduce((sum, item) => sum + item.falsePositives, 0);
+    const recovered = triggers.filter((item) => item.topTrigger?.recoveredNewHigh?.recovered).length;
+
+    const avgDamage = triggers.length
+      ? triggers.reduce((sum, item) => sum + item.topTrigger.damageAtConfirmationPct, 0) / triggers.length
+      : null;
+
+    const avgDays = triggers.length
+      ? triggers.reduce((sum, item) => sum + item.topTrigger.daysFromPeak, 0) / triggers.length
+      : null;
+
+    const worstDamage = triggers.length
+      ? Math.min(...triggers.map((item) => item.topTrigger.damageAtConfirmationPct))
+      : null;
+
+    let classification = 'Cobertura insuficiente';
+    if (triggers.length >= 2) {
+      if (falsePositives >= 3) classification = 'Demasiado sensible';
+      else if (Number.isFinite(avgDamage) && avgDamage <= -15) classification = 'Demasiado tardía';
+      else if (falsePositives <= 1 && Number.isFinite(avgDamage) && avgDamage > -12) classification = 'Candidata a estudiar';
+      else classification = 'Trade-off intermedio';
+    }
+
+    return {
+      ...rule,
+      cyclesTriggered: triggers.length,
+      falsePositives,
+      recoveriesAfterTrigger: recovered,
+      averageDamageAtConfirmationPct: avgDamage,
+      worstDamageAtConfirmationPct: worstDamage,
+      averageDaysFromPeak: avgDays,
+      classification,
+    };
+  });
+}
+
 export async function GET() {
   try {
     const rows = await fetchHistory();
@@ -587,8 +778,11 @@ export async function GET() {
     const legacyCycles = CYCLES.map((cycle) => analyzeCycle(rows, cycle)).filter(Boolean);
     const legacySummary = summarize(legacyCycles);
 
-    const cycles = CYCLES.map((cycle) => analyzeFastCycle(rows, cycle)).filter(Boolean);
-    const summary = summarizeFast(cycles);
+    const legacyV21Cycles = CYCLES.map((cycle) => analyzeFastCycle(rows, cycle)).filter(Boolean);
+    const legacyV21Summary = summarizeFast(legacyV21Cycles);
+
+    const cycles = CYCLES.map((cycle) => analyzeDualCycle(rows, cycle)).filter(Boolean);
+    const summary = summarizeDual(cycles);
 
     const diagnostics = {
       rowCount: rows.length,
@@ -605,30 +799,38 @@ export async function GET() {
       combinationsWithTwoOrMoreCycles: summary.filter((item) => item.cyclesTriggered >= 2).length,
       legacyV2Combinations: legacySummary.length,
       legacyV2WithTwoOrMoreCycles: legacySummary.filter((item) => item.cyclesTriggered >= 2).length,
+      legacyV21Combinations: legacyV21Summary.length,
+      legacyV21WithTwoOrMoreCycles: legacyV21Summary.filter((item) => item.cyclesTriggered >= 2).length,
     };
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
-      sourceStatus: 'live-backtest-v2-1',
+      sourceStatus: 'live-backtest-v2-2',
       diagnostics,
       methodology: {
-        version: 'V2.1.1',
-        sequence: 'Contexto previo → cruce de drawdown → confirmación rápida posterior',
+        version: 'V2.2',
+        sequence: 'Contexto previo → cruce de drawdown → doble confirmación posterior',
         context: 'MVRV >= 2.4 en la ventana previa O capital débil (< +0.5% a 30d) al menos 7 días',
         event: 'Primer cruce del drawdown desde el máximo conocido hasta ese día',
+        confirmation: 'Deben aparecer ambas familias dentro de la misma ventana, aunque no coincidan el mismo día',
         confirmationFamilies: {
           capital_relative: 'Realized Cap 7d entra en contracción o deteriora al menos 0.35 pp frente al nivel del evento',
           price_structure: 'BTC permanece 3 cierres bajo el umbral o profundiza otros 4 puntos porcentuales de drawdown',
         },
         confirmationWindow: '7, 14 o 21 días posteriores al evento',
         falsePositive: 'Señal antes del máximo final que luego recupera un nuevo máximo y habría sacrificado >15% de subida hasta el máximo final',
-        evaluation: 'Una señal previa al máximo solo cuenta como detección útil si deja <=15% de subida hasta el máximo final; así evitamos premiar correcciones profundas previas al techo.',
-        caveat: 'Los umbrales V2.1 siguen siendo pruebas gruesas predefinidas, no parámetros optimizados. V2.1.1 corrige únicamente la evaluación, no las reglas.',
+        evaluation: 'La confirmación ocurre el día en que aparece la segunda de las dos familias. No se exige simultaneidad.',
+        caveat: 'V2.2 prueba confluencia temporal para reducir ruido. No modifica el Health Gate ni autoriza una salida.',
       },
       legacyV2: {
         methodology: 'Capital 30d negativo o 7 días consecutivos débil',
         cycles: legacyCycles,
         summary: legacySummary,
+      },
+      legacyV21: {
+        methodology: 'Una sola familia rápida: capital relativo O estructura de precio',
+        cycles: legacyV21Cycles,
+        summary: legacyV21Summary,
       },
       cycles,
       summary,
