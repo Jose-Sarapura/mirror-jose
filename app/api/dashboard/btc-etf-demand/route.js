@@ -21,10 +21,12 @@ function cleanText(value) {
 }
 
 function parseFlow(value) {
+  if (value === null || value === undefined || value === '') return null;
   if (Number.isFinite(Number(value))) return Number(value);
 
   const raw = cleanText(value);
-  if (!raw || raw === '-' || raw === '–' || raw === '—') return 0;
+  if (!raw) return null;
+  if (raw === '-' || raw === '–' || raw === '—') return 0;
 
   const negative = /^\(.*\)$/.test(raw) || raw.startsWith('-') || raw.startsWith('−');
   const multiplier = /b\b/i.test(raw) ? 1000 : 1;
@@ -213,6 +215,7 @@ export async function GET() {
       },
       diagnostics: {
         etfRows: flows.length,
+        nonZeroEtfRows: flows.filter((row) => row.total !== 0).length,
         priceRows: prices.length,
       },
       current: buildSnapshot(flows),
