@@ -89,7 +89,7 @@ function persistence(series, classifier, currentStatus) {
 async function fetchCoinMetrics() {
   const params = new URLSearchParams({
     assets: 'btc',
-    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur,SplyCur,SplyActPct1yr,SplyAct1Yr',
+    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur,SplyCur,SplyActPct1yr,SplyAct1yr',
     frequency: '1d',
     start_time: daysAgo(125),
     paging_from: 'start',
@@ -113,7 +113,7 @@ async function fetchCoinMetrics() {
       const marketCap = num(row.CapMrktCurUSD);
       const mvrv = num(row.CapMVRVCur);
       const supply = num(row.SplyCur);
-      const active1y = num(row.SplyAct1Yr ?? row.SplyAct1yr);
+      const active1y = num(row.SplyAct1yr);
       const directActive1yPct = num(row.SplyActPct1yr);
       const active1yPct = Number.isFinite(directActive1yPct)
         ? directActive1yPct
