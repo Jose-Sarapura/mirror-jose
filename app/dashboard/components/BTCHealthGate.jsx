@@ -8,6 +8,7 @@ import styles from '../dashboard.module.css';
 const RULE_MARKER = 'mirror-v3-btc-health-gate-rule-v1';
 const HISTORY_KEY = 'mirror-v3-btc-health-history-v1';
 const LTH_PENDING_RULE_MARKER = 'mirror-v3-btc-lth-pending-rule-v1';
+const CALIBRATION_RULE_MARKER = 'mirror-v3-btc-calibration-rule-v1';
 
 const DEFINITIONS = {
   mvrv: {
@@ -130,6 +131,26 @@ function seedRule() {
       });
     }
     localStorage.setItem(LTH_PENDING_RULE_MARKER, 'seeded');
+  }
+
+  if (localStorage.getItem(CALIBRATION_RULE_MARKER) !== 'seeded') {
+    const refreshed = readDecisionLog(localStorage);
+    if (!refreshed.some((entry) => entry.id === 'btc-calibration-rule-v1')) {
+      appendDecisionLog(localStorage, {
+        id: 'btc-calibration-rule-v1',
+        date: new Date().toISOString().slice(0, 10),
+        type: 'rule_definition',
+        asset: 'BTC',
+        ruleId: 'btc-persistence-calibration',
+        ruleTitle: 'Cruce activa atención; persistencia y confluencia activan protección',
+        decision: 'No elevar el BTC Health Gate por un cruce aislado de MVRV, capital o STH cost basis',
+        reason: 'Las correcciones normales pueden cruzar niveles relevantes y recuperarlos. Mirror exige persistencia antes de tratar el deterioro como cambio de régimen.',
+        evidence: 'Calibración V1: capital 14/21 días; STH 7/14 días; MVRV elevado no confirma salida por duración.',
+        source: 'btc-health-gate',
+        reviewStatus: 'pending',
+      });
+    }
+    localStorage.setItem(CALIBRATION_RULE_MARKER, 'seeded');
   }
 }
 
@@ -354,6 +375,29 @@ export default function BTCHealthGate() {
         <div>
           <strong>LTH ↔ entrada de capital</strong>
           <span>Conceptualmente complementarios, pero LTH queda fuera del cálculo hasta tener una fuente válida. No puede subir por sí mismo el estado del Health Gate.</span>
+        </div>
+      </div>
+
+      <div className={styles.btcCalibrationStrip}>
+        <div>
+          <span>MVRV</span>
+          <strong>2,4 = atención · 3,0 = sobrecalentado</strong>
+          <small>El tiempo elevado no genera salida por sí solo.</small>
+        </div>
+        <div>
+          <span>Entrada de capital</span>
+          <strong>14 días = confirmada · 21 = fuerte</strong>
+          <small>Solo cuenta como deterioro si el cambio 30d del realized cap es negativo.</small>
+        </div>
+        <div>
+          <span>STH cost basis</span>
+          <strong>7 días = confirmada · 14 = fuerte</strong>
+          <small>Provisional mientras el cost basis siga siendo híbrido/snapshot.</small>
+        </div>
+        <div>
+          <span>Filtro anti falso positivo</span>
+          <strong>2 señales confirmadas</strong>
+          <small>Protección real exige confluencia; un cruce aislado no basta.</small>
         </div>
       </div>
 
