@@ -302,6 +302,26 @@ function futureWorstDrawdown(rows, index, days = 120) {
   };
 }
 
+function upsideToPeak(confirmationPrice, peakPrice) {
+  if (!(Number.isFinite(confirmationPrice) && Number.isFinite(peakPrice)) || confirmationPrice <= 0) return null;
+  return ((peakPrice / confirmationPrice) - 1) * 100;
+}
+
+function isAcceptableTopTrigger(episode, peak) {
+  const confirmationDate = new Date(`${episode.confirmation.date}T00:00:00Z`);
+  const peakDate = new Date(`${peak.date}T00:00:00Z`);
+  const daysFromPeak = daysBetween(peak.date, episode.confirmation.date);
+
+  if (confirmationDate >= peakDate) return daysFromPeak <= 90;
+
+  // A signal shortly before the final peak is only treated as useful if the
+  // opportunity cost is modest. This prevents a deep pre-peak correction from
+  // being mislabeled as a successful "top" signal just because it happened
+  // within an arbitrary calendar window.
+  const missedUpsidePct = upsideToPeak(episode.confirmation.price, peak.price);
+  return Number.isFinite(missedUpsidePct) && missedUpsidePct <= 15;
+}
+
 function buildRules() {
   const rules = [];
   for (const drawdown of DRAWDOWNS) {
@@ -457,18 +477,19 @@ function analyzeFastRule(rows, peak, rule) {
   const episodes = extractFastSequenceEpisodes(rows, rule);
 
   const falsePositives = episodes.filter((episode) => {
-    const moreThan60BeforeFinalPeak = daysBetween(episode.confirmation.date, peak.date) > 60;
-    if (!moreThan60BeforeFinalPeak) return false;
-    return futureNewHigh(rows, episode.confirmation.index, episode.highWater, 270).recovered;
+    const confirmationDate = new Date(`${episode.confirmation.date}T00:00:00Z`);
+    const peakDate = new Date(`${peak.date}T00:00:00Z`);
+    if (confirmationDate >= peakDate) return false;
+
+    const recovered = futureNewHigh(rows, episode.confirmation.index, episode.highWater, 270).recovered;
+    const missedUpsidePct = upsideToPeak(episode.confirmation.price, peak.price);
+
+    // A pre-peak trigger is harmful when BTC subsequently makes a new high
+    // and the investor would have surrendered >15% of upside to the final peak.
+    return recovered && Number.isFinite(missedUpsidePct) && missedUpsidePct > 15;
   });
 
-  const topStart = dateAdd(peak.date, -60);
-  const topEnd = dateAdd(peak.date, 90);
-
-  const topTrigger = episodes.find((episode) => {
-    const d = new Date(`${episode.confirmation.date}T00:00:00Z`);
-    return d >= topStart && d <= topEnd;
-  }) || null;
+  const topTrigger = episodes.find((episode) => isAcceptableTopTrigger(episode, peak)) || null;
 
   let detail = null;
   if (topTrigger) {
@@ -481,6 +502,9 @@ function analyzeFastRule(rows, peak, rule) {
       daysFromPeak: daysBetween(peak.date, topTrigger.confirmation.date),
       eventDrawdownPct: topTrigger.eventDrawdownPct,
       damageAtConfirmationPct: ((confirmationRow.price / peak.price) - 1) * 100,
+      missedUpsideToPeakPct: topTrigger.confirmation.date < peak.date
+        ? upsideToPeak(confirmationRow.price, peak.price)
+        : 0,
       priceAtConfirmation: confirmationRow.price,
       capital7dPct: confirmationRow.capital7dPct,
       recoveredNewHigh: futureNewHigh(rows, topTrigger.confirmation.index, topTrigger.highWater, 270),
@@ -588,7 +612,7 @@ export async function GET() {
       sourceStatus: 'live-backtest-v2-1',
       diagnostics,
       methodology: {
-        version: 'V2.1',
+        version: 'V2.1.1',
         sequence: 'Contexto previo → cruce de drawdown → confirmación rápida posterior',
         context: 'MVRV >= 2.4 en la ventana previa O capital débil (< +0.5% a 30d) al menos 7 días',
         event: 'Primer cruce del drawdown desde el máximo conocido hasta ese día',
@@ -597,8 +621,9 @@ export async function GET() {
           price_structure: 'BTC permanece 3 cierres bajo el umbral o profundiza otros 4 puntos porcentuales de drawdown',
         },
         confirmationWindow: '7, 14 o 21 días posteriores al evento',
-        falsePositive: 'Confirmación >60 días antes del máximo final que luego recupera un nuevo máximo dentro de 270 días',
-        caveat: 'Los umbrales V2.1 son pruebas gruesas predefinidas, no parámetros optimizados. Tres ciclos no permiten ajuste fino.',
+        falsePositive: 'Señal antes del máximo final que luego recupera un nuevo máximo y habría sacrificado >15% de subida hasta el máximo final',
+        evaluation: 'Una señal previa al máximo solo cuenta como detección útil si deja <=15% de subida hasta el máximo final; así evitamos premiar correcciones profundas previas al techo.',
+        caveat: 'Los umbrales V2.1 siguen siendo pruebas gruesas predefinidas, no parámetros optimizados. V2.1.1 corrige únicamente la evaluación, no las reglas.',
       },
       legacyV2: {
         methodology: 'Capital 30d negativo o 7 días consecutivos débil',
