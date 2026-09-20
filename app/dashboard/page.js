@@ -26,6 +26,10 @@ import BTCProfitProtectionLab from './components/BTCProfitProtectionLab';
 import BTCHolderBehaviorLab from './components/BTCHolderBehaviorLab';
 import BTCETFDemandLab from './components/BTCETFDemandLab';
 import BTCExitConstitution from './components/BTCExitConstitution';
+import ETHCycleLab from './components/ETHCycleLab';
+import ETHHealthGate from './components/ETHHealthGate';
+import ETHExitConstitution from './components/ETHExitConstitution';
+import ETHProtectionMonitor from './components/ETHProtectionMonitor';
 import { allocationHealth, estimateGoalYear, mergePortfolioData } from './lib/calculations';
 import { createDefaultSettings, persistSettings, readStoredSettings } from './lib/settings';
 import { clp, nativeMoney, percentage, shares } from './lib/format';
@@ -325,6 +329,10 @@ export default function DashboardPage() {
           <BTCProfitProtectionLab />
           <BTCHolderBehaviorLab />
           <BTCETFDemandLab />
+          <ETHCycleLab />
+          <ETHHealthGate />
+          <ETHExitConstitution />
+          <ETHProtectionMonitor portfolio={portfolio} />
 
           <section className={styles.riskLab}>
             <div className={styles.panelHeader}>
