@@ -128,6 +128,7 @@ function modeLabel(mode) {
 }
 
 function fmt(value, digits = 2) {
+  if (value === null || value === undefined || value === '') return '—';
   const n = Number(value);
   return Number.isFinite(n) ? n.toFixed(digits) : '—';
 }
@@ -256,11 +257,15 @@ export default function BTCHealthGate() {
               <div className={styles.btcPersistence}>
                 <span>
                   Persistencia:
-                  <strong>{signal.persistence?.days ? ' ' + signal.persistence.days + ' días' : ' iniciando registro'}</strong>
+                  <strong>{
+                    signal.sourceMode === 'unavailable'
+                      ? ' no disponible'
+                      : (signal.persistence?.days ? ' ' + signal.persistence.days + ' días' : ' iniciando registro')
+                  }</strong>
                 </span>
                 <span>
                   Último cambio Mirror:
-                  <strong>{change?.asOf || ' hoy'}</strong>
+                  <strong>{signal.sourceMode === 'unavailable' ? '—' : (change?.asOf || ' hoy')}</strong>
                 </span>
               </div>
 
