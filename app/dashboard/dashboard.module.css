@@ -3781,3 +3781,20 @@
   .btcBacktestSummary { grid-template-columns: 1fr; }
   .btcEventStudy article { grid-template-columns: 1fr; }
 }
+
+
+/* BTC backtest verdicts */
+.btcBacktestVerdict {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 5px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(112,167,255,.07);
+  color: #9fb8d8;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.3;
+}
