@@ -13,6 +13,7 @@ const TRUE_MARKET_MEAN_SNAPSHOT = {
   asOf: '2026-09-16',
   source: 'Glassnode research snapshot',
 };
+const ETF_MONITOR_URL = 'https://axeladlerjr.com/charts/bitcoin-etf-flow-monitor/';
 
 function daysAgo(days) {
   const d = new Date();
@@ -61,6 +62,107 @@ function classifySth(price, basis) {
   if (distancePct < 0) return { status: 'Bajo cost basis', tone: 'danger', risk: true, distancePct };
   if (distancePct < 5) return { status: 'Zona sensible', tone: 'watch', risk: true, distancePct };
   return { status: 'Sobre cost basis', tone: 'good', risk: false, distancePct };
+}
+
+function stripHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function moneyToMillions(raw) {
+  const text = String(raw || '').replace(/,/g, '').trim();
+  const match = text.match(/^([+-]?\$?)(-?\d+(?:\.\d+)?)\s*([KMB])?$/i);
+  if (!match) return null;
+  let value = Number(match[2]);
+  if (!Number.isFinite(value)) return null;
+  const unit = (match[3] || 'M').toUpperCase();
+  if (unit === 'B') value *= 1000;
+  if (unit === 'K') value /= 1000;
+  return value;
+}
+
+function extractAfter(text, label, pattern) {
+  const index = text.indexOf(label);
+  if (index < 0) return null;
+  const slice = text.slice(index + label.length, index + label.length + 220);
+  return slice.match(pattern)?.[1] || null;
+}
+
+async function fetchEtfConfirmation() {
+  try {
+    const response = await fetch(ETF_MONITOR_URL, {
+      headers: { 'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0' },
+      next: { revalidate: 3600 },
+    });
+    if (!response.ok) return null;
+
+    const text = stripHtml(await response.text());
+    const asOf = text.match(/Data as of\s+(\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dailyRaw = extractAfter(text, 'Last Day Netflow', /([+-]?\$?[\d,.]+\s*[KMB])/i);
+    const weekRaw = extractAfter(text, 'Last Week Netflow', /([+-]?\$?[\d,.]+\s*[KMB])/i);
+    const basisDistance = text.match(/ETF Realized Price\s+\$[\d,]+\s+([+-]?\d+(?:\.\d+)?)%/i)?.[1];
+    const realizedRaw = extractAfter(text, 'ETF Realized Price', /(\$[\d,]+)/i);
+
+    const dailyFlowUSDm = moneyToMillions(dailyRaw);
+    const weeklyFlowUSDm = moneyToMillions(weekRaw);
+    const btcVsEtfBasisPct = basisDistance !== undefined ? Number(basisDistance) : null;
+    const etfRealizedPriceUSD = realizedRaw ? Number(realizedRaw.replace(/[$,]/g, '')) : null;
+
+    if (!Number.isFinite(weeklyFlowUSDm) || !Number.isFinite(btcVsEtfBasisPct)) return null;
+
+    return { asOf, dailyFlowUSDm, weeklyFlowUSDm, btcVsEtfBasisPct, etfRealizedPriceUSD };
+  } catch {
+    return null;
+  }
+}
+
+function classifyEtf(etf) {
+  if (!etf) {
+    return {
+      status: 'Sin dato vivo',
+      tone: 'neutral',
+      risk: false,
+      watch: false,
+      confirmed: false,
+    };
+  }
+
+  const weeklyNegative = etf.weeklyFlowUSDm < 0;
+  const belowBasis = etf.btcVsEtfBasisPct < 0;
+
+  if (weeklyNegative && belowBasis) {
+    return {
+      status: 'Demanda débil confirmada',
+      tone: 'danger',
+      risk: true,
+      watch: true,
+      confirmed: true,
+    };
+  }
+
+  if (weeklyNegative || belowBasis) {
+    return {
+      status: 'Debilidad parcial',
+      tone: 'watch',
+      risk: false,
+      watch: true,
+      confirmed: false,
+    };
+  }
+
+  return {
+    status: 'Demanda favorable',
+    tone: 'good',
+    risk: false,
+    watch: false,
+    confirmed: false,
+  };
 }
 
 function persistence(series, classifier, currentStatus) {
@@ -174,13 +276,25 @@ function buildFallback() {
         snapshotDate: STH_SNAPSHOT.asOf,
         sourceMode: 'snapshot',
       },
+      etf: {
+        status: 'Sin dato vivo',
+        tone: 'neutral',
+        risk: false,
+        watch: false,
+        confirmed: false,
+        sourceMode: 'secondary',
+        excludedAsStandaloneTrigger: true,
+      },
     },
   };
 }
 
 export async function GET() {
   try {
-    const series = await fetchCoinMetrics();
+    const [series, etf] = await Promise.all([
+      fetchCoinMetrics(),
+      fetchEtfConfirmation(),
+    ]);
     if (!series.length) return NextResponse.json(buildFallback());
 
     const latestPriceRow = latestValidRow(series, 'price');
@@ -198,6 +312,7 @@ export async function GET() {
     const capitalState = classifyCapital(capitalChange30dPct);
 
     const sthState = classifySth(latestPriceRow?.price, STH_SNAPSHOT.valueUSD);
+    const etfState = classifyEtf(etf);
 
     const mvrvPersistence = persistence(
       series.filter((row) => Number.isFinite(row.mvrv) && row.mvrv > 0),
@@ -232,11 +347,13 @@ export async function GET() {
     const sthConfirmedRisk = sthState.risk && sthRiskDays >= 7;
     const sthStrongRisk = sthState.risk && sthRiskDays >= 14;
     const mvrvOverheated = mvrvState.risk;
+    const etfConfirmedRisk = etfState.confirmed;
 
     const warningCount = [
       mvrvState.watch,
       capitalState.watch || capitalState.risk,
       sthState.risk,
+      etfState.watch,
     ].filter(Boolean).length;
 
     const confirmedRisks = [
@@ -272,11 +389,14 @@ export async function GET() {
     } else if (
       (capitalStrongRisk && sthStrongRisk)
       || (mvrvOverheated && capitalConfirmedRisk && sthConfirmedRisk)
+      || (confirmedRisks >= 2 && etfConfirmedRisk)
     ) {
       gate = {
         key: 'evaluate_protection',
         label: 'Protección a evaluar',
-        explanation: 'Existe deterioro persistente y confirmado entre demanda y estructura, o una confluencia completa con sobrecalentamiento. Corresponde revisar protección; no vender automáticamente.',
+        explanation: etfConfirmedRisk && confirmedRisks >= 2
+          ? 'Dos señales núcleo están confirmadas y ETF añade deterioro moderno de demanda. Corresponde evaluar protección; no vender automáticamente.'
+          : 'Existe deterioro persistente y confirmado entre demanda y estructura, o una confluencia completa con sobrecalentamiento. Corresponde revisar protección; no vender automáticamente.',
       };
     } else if (confirmedRisks >= 2) {
       gate = {
@@ -296,6 +416,7 @@ export async function GET() {
         mvrv: latestMvrvRow?.time?.slice(0, 10) || null,
         capital: latestCapitalRow?.time?.slice(0, 10) || null,
         sthSnapshot: STH_SNAPSHOT.asOf,
+        etf: etf?.asOf || null,
       },
       gate,
       calibration: {
@@ -315,7 +436,12 @@ export async function GET() {
           strongDays: 14,
           note: 'Persistencia provisional mientras el cost basis sea snapshot híbrido',
         },
-        logic: 'Cruce = atención; persistencia + confluencia = acción a evaluar',
+        etf: {
+          role: 'Confirmación secundaria solamente',
+          confirmedWhen: 'Flujo semanal negativo Y BTC bajo el ETF realized price',
+          standaloneTrigger: false,
+        },
+        logic: 'Cruce = atención; persistencia núcleo + confluencia = acción a evaluar; ETF solo puede reforzar una señal ya formada',
       },
       diagnostics: {
         warningCount,
@@ -327,6 +453,7 @@ export async function GET() {
         sthConfirmedRisk,
         sthStrongRisk,
         mvrvOverheated,
+        etfConfirmedRisk,
       },
       coverage: {
         operationalTotal: 3,
@@ -334,6 +461,7 @@ export async function GET() {
         exactLive: [availability.mvrv, availability.capital].filter(Boolean).length,
         hybrid: availability.sth ? 1 : 0,
         pending: 1,
+        secondary: etf ? 1 : 0,
         missingOperational,
       },
       signals: {
@@ -374,6 +502,18 @@ export async function GET() {
           sourceMode: 'hybrid',
           sourceLabel: 'Cost basis: snapshot Glassnode · precio: Coin Metrics diario',
           persistence: sthPersistence,
+        },
+        etf: {
+          ...etfState,
+          dailyFlowUSDm: etf?.dailyFlowUSDm ?? null,
+          weeklyFlowUSDm: etf?.weeklyFlowUSDm ?? null,
+          btcVsEtfBasisPct: etf?.btcVsEtfBasisPct ?? null,
+          etfRealizedPriceUSD: etf?.etfRealizedPriceUSD ?? null,
+          asOf: etf?.asOf || null,
+          sourceMode: etf ? 'secondary_live' : 'unavailable',
+          sourceLabel: 'Axel Adler Jr. · BTC US ETF Flow Monitor',
+          excludedAsStandaloneTrigger: true,
+          persistence: { days: null, since: null },
         },
       },
     });
