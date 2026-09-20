@@ -52,13 +52,6 @@ function classifyCapital(change30d) {
   return { status: 'Expansión', tone: 'good', risk: false };
 }
 
-function classifyLthProxy(change30dPp) {
-  if (!Number.isFinite(change30dPp)) return { status: 'Sin dato vivo', tone: 'neutral', risk: false };
-  if (change30dPp >= 1) return { status: 'Actividad creciente', tone: 'danger', risk: true };
-  if (change30dPp >= 0.25) return { status: 'Vigilar', tone: 'watch', risk: true };
-  return { status: 'Estable', tone: 'good', risk: false };
-}
-
 function classifySth(price, basis) {
   if (!(Number.isFinite(price) && Number.isFinite(basis))) {
     return { status: 'Sin dato', tone: 'neutral', risk: false, distancePct: null };
@@ -89,7 +82,7 @@ function persistence(series, classifier, currentStatus) {
 async function fetchCoinMetrics() {
   const params = new URLSearchParams({
     assets: 'btc',
-    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur,SplyCur,SplyActPct1yr,SplyAct1yr',
+    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur',
     frequency: '1d',
     start_time: daysAgo(125),
     paging_from: 'start',
@@ -112,14 +105,6 @@ async function fetchCoinMetrics() {
       const price = num(row.PriceUSD);
       const marketCap = num(row.CapMrktCurUSD);
       const mvrv = num(row.CapMVRVCur);
-      const supply = num(row.SplyCur);
-      const active1y = num(row.SplyAct1yr);
-      const directActive1yPct = num(row.SplyActPct1yr);
-      const active1yPct = Number.isFinite(directActive1yPct)
-        ? directActive1yPct
-        : (Number.isFinite(active1y) && Number.isFinite(supply) && supply > 0
-          ? (active1y / supply) * 100
-          : null);
       const realizedCap = Number.isFinite(marketCap) && Number.isFinite(mvrv) && mvrv !== 0
         ? marketCap / mvrv
         : null;
@@ -130,10 +115,6 @@ async function fetchCoinMetrics() {
         marketCap,
         mvrv,
         realizedCap,
-        active1yPct,
-        active1yPctMode: Number.isFinite(directActive1yPct)
-          ? 'direct'
-          : (Number.isFinite(active1yPct) ? 'derived' : 'unavailable'),
       };
     })
     .filter((row) => row.time && Number.isFinite(row.price))
@@ -159,7 +140,14 @@ function buildFallback() {
     },
     signals: {
       mvrv: { status: 'Sin dato vivo', tone: 'neutral', risk: false, sourceMode: 'fallback' },
-      lth: { status: 'Snapshot pendiente', tone: 'neutral', risk: false, sourceMode: 'snapshot' },
+      lth: {
+        status: 'Pendiente de fuente válida',
+        tone: 'neutral',
+        risk: false,
+        sourceMode: 'pending',
+        excludedFromGate: true,
+        sourceLabel: 'Fuera del cálculo hasta contar con datos de cohortes válidos',
+      },
       capital: { status: 'Sin dato vivo', tone: 'neutral', risk: false, sourceMode: 'fallback' },
       sth: {
         status: 'Snapshot de investigación',
@@ -187,12 +175,6 @@ export async function GET() {
     const capitalChange90dPct = pctChange(latest.realizedCap, realized90);
     const capitalState = classifyCapital(capitalChange30dPct);
 
-    const active30 = valueAtOffset(series, 'active1yPct', 30);
-    const lthProxyChange30dPp = Number.isFinite(latest.active1yPct) && Number.isFinite(active30)
-      ? latest.active1yPct - active30
-      : null;
-    const lthState = classifyLthProxy(lthProxyChange30dPp);
-
     const sthState = classifySth(latest.price, STH_SNAPSHOT.valueUSD);
 
     const mvrvPersistence = persistence(
@@ -208,22 +190,6 @@ export async function GET() {
       (row) => classifyCapital(row.capitalChange30dPct).status,
       capitalState.status,
     );
-    const lthPersistence = Number.isFinite(lthProxyChange30dPp)
-      ? persistence(
-          series.map((row, index) => {
-            const compare = index >= 30 ? series[index - 30]?.active1yPct : null;
-            return {
-              ...row,
-              lthProxyChange30dPp: Number.isFinite(row.active1yPct) && Number.isFinite(compare)
-                ? row.active1yPct - compare
-                : null,
-            };
-          }).filter((row) => Number.isFinite(row.lthProxyChange30dPp)),
-          (row) => classifyLthProxy(row.lthProxyChange30dPp).status,
-          lthState.status,
-        )
-      : { days: null, since: null };
-
     const sthSeries = series.filter((row) => new Date(row.time) >= new Date(`${STH_SNAPSHOT.asOf}T00:00:00Z`));
     const sthPersistence = persistence(
       sthSeries,
@@ -233,38 +199,36 @@ export async function GET() {
 
     const earlyRisks = [
       mvrvState.risk,
-      lthState.risk,
       capitalState.risk,
     ].filter(Boolean).length;
 
-    const independentRisks = [
+    const operationalRisks = [
       mvrvState.risk,
-      lthState.risk,
       capitalState.risk,
       sthState.risk,
     ].filter(Boolean).length;
 
-    const confirmation = sthState.risk || (capitalState.risk && (capitalPersistence.days || 0) >= 14);
+    const structuralConfirmation = sthState.risk && (sthPersistence.days || 0) >= 3;
 
     let gate = {
       key: 'maintain',
-      label: independentRisks === 0 ? 'Mantener' : 'Vigilancia',
-      explanation: independentRisks === 0
-        ? 'No hay suficientes familias deterioradas para preparar protección.'
-        : 'Hay señales que requieren seguimiento, pero todavía no existe confluencia suficiente.',
+      label: operationalRisks === 0 ? 'Mantener' : 'Vigilancia',
+      explanation: operationalRisks === 0
+        ? 'Ninguna de las tres señales operativas está deteriorada.'
+        : 'Hay una señal que requiere seguimiento, pero todavía no existe confluencia suficiente.',
     };
 
-    if (earlyRisks >= 2 && confirmation) {
+    if (operationalRisks >= 2 && structuralConfirmation && earlyRisks >= 1) {
       gate = {
         key: 'evaluate_protection',
         label: 'Protección a evaluar',
-        explanation: 'Coinciden varias familias de riesgo y existe una señal de confirmación. Esto activa revisión; no una venta automática.',
+        explanation: 'Coincide al menos una señal temprana con deterioro estructural persistente. Esto activa revisión; no una venta automática.',
       };
-    } else if (earlyRisks >= 2) {
+    } else if (operationalRisks >= 2) {
       gate = {
         key: 'prepare',
         label: 'Preparar protección',
-        explanation: 'Dos o más familias tempranas están deterioradas. Mirror prepara el plan, pero espera confirmación antes de considerar reducción.',
+        explanation: 'Dos señales operativas independientes están deterioradas. Mirror prepara el plan y espera confirmación suficiente antes de considerar reducción.',
       };
     }
 
@@ -275,9 +239,10 @@ export async function GET() {
       priceUSD: latest.price,
       gate,
       coverage: {
+        operationalTotal: 3,
         exactLive: 2,
-        proxyLive: Number.isFinite(latest.active1yPct) ? 1 : 0,
-        snapshot: 1,
+        hybrid: 1,
+        pending: 1,
       },
       signals: {
         mvrv: {
@@ -288,16 +253,13 @@ export async function GET() {
           persistence: mvrvPersistence,
         },
         lth: {
-          ...lthState,
-          value: latest.active1yPct,
-          change30dPp: lthProxyChange30dPp,
-          sourceMode: Number.isFinite(latest.active1yPct) ? 'proxy' : 'unavailable',
-          sourceLabel: Number.isFinite(latest.active1yPct)
-            ? (latest.active1yPctMode === 'direct'
-              ? 'Coin Metrics Community · SplyActPct1yr (proxy, no LTH exacto)'
-              : 'Coin Metrics Community · SplyAct1Yr / SplyCur (proxy derivado, no LTH exacto)')
-            : 'LTH exacto requiere fuente de cohortes',
-          persistence: lthPersistence,
+          status: 'Pendiente de fuente válida',
+          tone: 'neutral',
+          risk: false,
+          sourceMode: 'pending',
+          excludedFromGate: true,
+          sourceLabel: 'Fuera del cálculo operativo hasta contar con una fuente de cohortes válida',
+          persistence: { days: null, since: null },
         },
         capital: {
           ...capitalState,
