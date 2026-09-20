@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const TFTC_URL = 'https://www.tftc.io/bitcoin-etf-flows/data.json';
+const FARSIDE_READER_URL = 'https://r.jina.ai/https://farside.co.uk/bitcoin-etf-flow-all-data/';
 const COIN_METRICS = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
 
 function num(value) {
@@ -113,21 +113,35 @@ function findRowAtOrBefore(rows, date) {
 }
 
 async function fetchEtfFlows() {
-  const response = await fetch(TFTC_URL, {
+  const response = await fetch(FARSIDE_READER_URL, {
     headers: {
       'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0',
-      Accept: 'application/json',
+      Accept: 'text/plain',
     },
     next: { revalidate: 3600 },
   });
 
-  if (!response.ok) throw new Error(`TFTC ETF JSON HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`Farside Reader HTTP ${response.status}`);
 
-  const payload = await response.json();
-  const collected = collectEtfRows(payload);
+  const text = await response.text();
+  const rows = [];
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!/^\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*\|/.test(line)) continue;
+
+    const cells = line.split('|').map((cell) => cell.trim());
+    if (cells.length < 2) continue;
+
+    const date = parseDate(cells[0]);
+    const total = parseFlow(cells[cells.length - 1]);
+
+    if (!date || !Number.isFinite(total)) continue;
+    rows.push({ date, total });
+  }
 
   const byDate = new Map();
-  for (const row of collected) byDate.set(row.date, row);
+  for (const row of rows) byDate.set(row.date, row);
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -201,14 +215,14 @@ function build2025Study(flowRows, priceRows) {
 export async function GET() {
   try {
     const [flows, prices] = await Promise.all([fetchEtfFlows(), fetchBtcPrices()]);
-    if (!flows.length) throw new Error('TFTC no devolvió filas ETF parseables');
+    if (!flows.length) throw new Error('Farside Reader no devolvió filas ETF parseables');
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
       sourceStatus: 'live-etf-demand',
       methodology: {
         family: 'Demanda spot/ETF',
-        source: 'TFTC open JSON · SoSoValue/Farside/issuer disclosures',
+        source: 'Farside Investors · vía Jina Reader',
         historyStarts: flows[0]?.date || '2024-01-11',
         limitation: 'Los ETF spot de EE.UU. comenzaron en 2024; esta familia no puede validarse contra 2017 o 2021.',
         gateImpact: 'Investigación solamente. No modifica BTC Health Gate.',
