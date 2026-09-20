@@ -10,16 +10,9 @@ const CYCLES = [
   { key: '2025', start: '2024-01-01', end: '2026-01-31' },
 ];
 
-const RULES = [
-  { key: 'dd5_any', label: 'DD -5% + contexto', drawdown: -5, context: 'any' },
-  { key: 'dd8_any', label: 'DD -8% + contexto', drawdown: -8, context: 'any' },
-  { key: 'dd10_any', label: 'DD -10% + contexto', drawdown: -10, context: 'any' },
-  { key: 'dd12_any', label: 'DD -12% + contexto', drawdown: -12, context: 'any' },
-  { key: 'dd15_any', label: 'DD -15% + contexto', drawdown: -15, context: 'any' },
-  { key: 'dd8_both', label: 'DD -8% + 2 contextos', drawdown: -8, context: 'both' },
-  { key: 'dd10_both', label: 'DD -10% + 2 contextos', drawdown: -10, context: 'both' },
-  { key: 'dd12_both', label: 'DD -12% + 2 contextos', drawdown: -12, context: 'both' },
-];
+const DRAWDOWNS = [-8, -10, -12];
+const CONTEXT_WINDOWS = [30, 60];
+const CONFIRM_WINDOWS = [7, 14, 21];
 
 function num(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -34,6 +27,12 @@ function pctChange(current, previous) {
 
 function daysBetween(a, b) {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
+}
+
+function dateAdd(dateString, days) {
+  const d = new Date(`${dateString}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
 }
 
 async function fetchHistory() {
@@ -86,60 +85,122 @@ function enrichCycle(rows) {
 
     return {
       ...row,
+      index,
       highWater: high,
       drawdownPct,
       capital30dPct,
-      mvrvContext: Number.isFinite(row.mvrv) && row.mvrv >= 2.4,
-      capitalContext: Number.isFinite(capital30dPct) && capital30dPct < 0.5,
+      mvrvElevated: Number.isFinite(row.mvrv) && row.mvrv >= 2.4,
+      capitalWeak: Number.isFinite(capital30dPct) && capital30dPct < 0.5,
+      capitalNegative: Number.isFinite(capital30dPct) && capital30dPct < 0,
     };
   });
 }
 
-function qualifies(row, rule) {
-  const contextCount = [row.mvrvContext, row.capitalContext].filter(Boolean).length;
-  const contextOk = rule.context === 'both' ? contextCount >= 2 : contextCount >= 1;
-  return row.drawdownPct <= rule.drawdown && contextOk;
+function hadPriorContext(rows, eventIndex, windowDays) {
+  const start = Math.max(0, eventIndex - windowDays);
+  const slice = rows.slice(start, eventIndex + 1);
+  const mvrvDays = slice.filter((row) => row.mvrvElevated).length;
+  const capitalWeakDays = slice.filter((row) => row.capitalWeak).length;
+
+  return {
+    ok: mvrvDays > 0 || capitalWeakDays >= 7,
+    mvrvDays,
+    capitalWeakDays,
+    firstDate: slice.find((row) => row.mvrvElevated || row.capitalWeak)?.date || null,
+  };
 }
 
-function extractEpisodes(rows, rule) {
-  const episodes = [];
-  let active = false;
+function findConfirmation(rows, eventIndex, confirmWindowDays) {
+  const end = Math.min(rows.length - 1, eventIndex + confirmWindowDays);
 
-  for (let i = 0; i < rows.length; i += 1) {
+  for (let i = eventIndex; i <= end; i += 1) {
     const row = rows[i];
-    const yes = qualifies(row, rule);
 
-    if (yes && !active) {
-      episodes.push({ ...row, index: i });
-      active = true;
-    } else if (!yes) {
-      active = false;
+    // Confirmation V2: realized cap 30d turns negative OR remains weak for 7 consecutive days.
+    if (row.capitalNegative) {
+      return {
+        found: true,
+        date: row.date,
+        index: i,
+        type: 'capital_negative',
+        capital30dPct: row.capital30dPct,
+        price: row.price,
+      };
     }
+
+    if (i >= eventIndex + 6) {
+      const last7 = rows.slice(i - 6, i + 1);
+      if (last7.length === 7 && last7.every((item) => item.capitalWeak)) {
+        return {
+          found: true,
+          date: row.date,
+          index: i,
+          type: 'capital_weak_7d',
+          capital30dPct: row.capital30dPct,
+          price: row.price,
+        };
+      }
+    }
+  }
+
+  return { found: false };
+}
+
+function extractSequenceEpisodes(rows, rule) {
+  const episodes = [];
+  let inDrawdown = false;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    const prev = rows[i - 1];
+    const crossed = prev.drawdownPct > rule.drawdown && row.drawdownPct <= rule.drawdown;
+
+    if (crossed && !inDrawdown) {
+      const context = hadPriorContext(rows, i, rule.contextWindow);
+      if (context.ok) {
+        const confirmation = findConfirmation(rows, i, rule.confirmWindow);
+        if (confirmation.found) {
+          episodes.push({
+            eventDate: row.date,
+            eventIndex: i,
+            eventPrice: row.price,
+            eventDrawdownPct: row.drawdownPct,
+            highWater: row.highWater,
+            context,
+            confirmation,
+          });
+        }
+      }
+      inDrawdown = true;
+    }
+
+    if (row.drawdownPct > rule.drawdown / 2) inDrawdown = false;
   }
 
   return episodes;
 }
 
-function futureNewHigh(rows, episode, days = 120) {
-  const end = Math.min(rows.length - 1, episode.index + days);
-  for (let i = episode.index + 1; i <= end; i += 1) {
-    if (rows[i].price > episode.highWater) {
+function futureNewHigh(rows, index, highWater, days = 270) {
+  const end = Math.min(rows.length - 1, index + days);
+  for (let i = index + 1; i <= end; i += 1) {
+    if (rows[i].price > highWater) {
       return {
         recovered: true,
         date: rows[i].date,
-        days: daysBetween(episode.date, rows[i].date),
+        days: daysBetween(rows[index].date, rows[i].date),
       };
     }
   }
   return { recovered: false, date: null, days: null };
 }
 
-function futureWorstDrawdown(rows, episode, days = 120) {
-  const end = Math.min(rows.length - 1, episode.index + days);
-  let minPrice = episode.price;
-  let minRow = episode;
+function futureWorstDrawdown(rows, index, days = 120) {
+  const end = Math.min(rows.length - 1, index + days);
+  const startPrice = rows[index]?.price;
+  let minPrice = startPrice;
+  let minRow = rows[index];
 
-  for (let i = episode.index; i <= end; i += 1) {
+  for (let i = index; i <= end; i += 1) {
     if (rows[i].price < minPrice) {
       minPrice = rows[i].price;
       minRow = rows[i];
@@ -147,53 +208,72 @@ function futureWorstDrawdown(rows, episode, days = 120) {
   }
 
   return {
-    worstFromSignalPct: ((minPrice / episode.price) - 1) * 100,
+    worstFromConfirmationPct: ((minPrice / startPrice) - 1) * 100,
     date: minRow.date,
   };
 }
 
+function buildRules() {
+  const rules = [];
+  for (const drawdown of DRAWDOWNS) {
+    for (const contextWindow of CONTEXT_WINDOWS) {
+      for (const confirmWindow of CONFIRM_WINDOWS) {
+        rules.push({
+          key: `dd${Math.abs(drawdown)}_ctx${contextWindow}_cf${confirmWindow}`,
+          label: `DD ${drawdown}% · ctx ${contextWindow}d · confirma ≤${confirmWindow}d`,
+          drawdown,
+          contextWindow,
+          confirmWindow,
+        });
+      }
+    }
+  }
+  return rules;
+}
+
+const RULES = buildRules();
+
 function analyzeRule(rows, peak, rule) {
-  const episodes = extractEpisodes(rows, rule);
-  const prePeakCutoff = new Date(peak.date);
-  prePeakCutoff.setUTCDate(prePeakCutoff.getUTCDate() - 60);
+  const episodes = extractSequenceEpisodes(rows, rule);
 
-  const falsePositives = episodes
-    .filter((episode) => new Date(episode.date) < prePeakCutoff)
-    .map((episode) => ({
-      ...episode,
-      recovery: futureNewHigh(rows, episode, 120),
-    }))
-    .filter((episode) => episode.recovery.recovered);
+  const falsePositives = episodes.filter((episode) => {
+    const confirmationRow = rows[episode.confirmation.index];
+    const moreThan60BeforeFinalPeak = daysBetween(episode.confirmation.date, peak.date) > 60;
+    if (!moreThan60BeforeFinalPeak) return false;
+    return futureNewHigh(rows, episode.confirmation.index, episode.highWater, 270).recovered;
+  });
 
-  const topWindowStart = new Date(peak.date);
-  topWindowStart.setUTCDate(topWindowStart.getUTCDate() - 60);
-  const topWindowEnd = new Date(peak.date);
-  topWindowEnd.setUTCDate(topWindowEnd.getUTCDate() + 90);
+  const topStart = dateAdd(peak.date, -60);
+  const topEnd = dateAdd(peak.date, 90);
 
   const topTrigger = episodes.find((episode) => {
-    const d = new Date(episode.date);
-    return d >= topWindowStart && d <= topWindowEnd;
+    const d = new Date(`${episode.confirmation.date}T00:00:00Z`);
+    return d >= topStart && d <= topEnd;
   }) || null;
 
-  const triggerDetail = topTrigger ? {
-    date: topTrigger.date,
-    daysFromPeak: daysBetween(peak.date, topTrigger.date),
-    drawdownPct: ((topTrigger.price / peak.price) - 1) * 100,
-    price: topTrigger.price,
-    mvrv: topTrigger.mvrv,
-    capital30dPct: topTrigger.capital30dPct,
-    recovery: futureNewHigh(rows, topTrigger, 120),
-    futureRisk: futureWorstDrawdown(rows, topTrigger, 120),
-  } : null;
+  let detail = null;
+  if (topTrigger) {
+    const confirmationRow = rows[topTrigger.confirmation.index];
+    detail = {
+      contextDate: topTrigger.context.firstDate,
+      eventDate: topTrigger.eventDate,
+      confirmDate: topTrigger.confirmation.date,
+      confirmationType: topTrigger.confirmation.type,
+      daysFromPeak: daysBetween(peak.date, topTrigger.confirmation.date),
+      eventDrawdownPct: topTrigger.eventDrawdownPct,
+      damageAtConfirmationPct: ((confirmationRow.price / peak.price) - 1) * 100,
+      priceAtConfirmation: confirmationRow.price,
+      capital30dPct: confirmationRow.capital30dPct,
+      recoveredNewHigh: futureNewHigh(rows, topTrigger.confirmation.index, topTrigger.highWater, 270),
+      futureRisk: futureWorstDrawdown(rows, topTrigger.confirmation.index, 120),
+    };
+  }
 
   return {
-    rule: rule.key,
-    label: rule.label,
-    drawdownThreshold: rule.drawdown,
-    context: rule.context,
+    ...rule,
     totalEpisodes: episodes.length,
     falsePositives: falsePositives.length,
-    topTrigger: triggerDetail,
+    topTrigger: detail,
   };
 }
 
@@ -217,29 +297,42 @@ function analyzeCycle(allRows, cycle) {
 function summarize(cycles) {
   return RULES.map((rule) => {
     const perCycle = cycles
-      .map((cycle) => cycle.rules.find((item) => item.rule === rule.key))
+      .map((cycle) => cycle.rules.find((item) => item.key === rule.key))
       .filter(Boolean);
 
     const triggers = perCycle.filter((item) => item.topTrigger);
     const falsePositives = perCycle.reduce((sum, item) => sum + item.falsePositives, 0);
+    const recovered = triggers.filter((item) => item.topTrigger?.recoveredNewHigh?.recovered).length;
+
     const avgDamage = triggers.length
-      ? triggers.reduce((sum, item) => sum + item.topTrigger.drawdownPct, 0) / triggers.length
+      ? triggers.reduce((sum, item) => sum + item.topTrigger.damageAtConfirmationPct, 0) / triggers.length
       : null;
+
     const avgDays = triggers.length
       ? triggers.reduce((sum, item) => sum + item.topTrigger.daysFromPeak, 0) / triggers.length
       : null;
-    const recoveries = triggers.filter((item) => item.topTrigger.recovery?.recovered).length;
+
+    const worstDamage = triggers.length
+      ? Math.min(...triggers.map((item) => item.topTrigger.damageAtConfirmationPct))
+      : null;
+
+    let classification = 'Cobertura insuficiente';
+    if (triggers.length >= 2) {
+      if (falsePositives >= 3) classification = 'Demasiado sensible';
+      else if (Number.isFinite(avgDamage) && avgDamage <= -15) classification = 'Demasiado tardía';
+      else if (falsePositives <= 1 && Number.isFinite(avgDamage) && avgDamage > -12) classification = 'Candidata a estudiar';
+      else classification = 'Trade-off intermedio';
+    }
 
     return {
-      rule: rule.key,
-      label: rule.label,
-      drawdownThreshold: rule.drawdown,
-      context: rule.context,
+      ...rule,
       cyclesTriggered: triggers.length,
       falsePositives,
-      recoveriesAfterTopTrigger: recoveries,
-      averageDamageAtTriggerPct: avgDamage,
+      recoveriesAfterTrigger: recovered,
+      averageDamageAtConfirmationPct: avgDamage,
+      worstDamageAtConfirmationPct: worstDamage,
       averageDaysFromPeak: avgDays,
+      classification,
     };
   });
 }
@@ -252,13 +345,14 @@ export async function GET() {
 
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
-      sourceStatus: 'live-backtest',
+      sourceStatus: 'live-backtest-v2',
       methodology: {
-        highWater: 'Máximo observado hasta cada día; sin look-ahead',
-        contexts: ['MVRV >= 2.4', 'Realized Cap 30d < +0.5%'],
-        falsePositive: 'Alerta >60 días antes del máximo final que recupera un nuevo máximo dentro de 120 días',
-        topWindow: 'Primera alerta entre 60 días antes y 90 días después del máximo final',
-        caveat: 'Solo tres ciclos; sirve para descartar reglas frágiles, no para optimizar un porcentaje perfecto',
+        sequence: 'Contexto previo → cruce de drawdown → confirmación posterior',
+        context: 'MVRV >= 2.4 en la ventana previa O capital débil (< +0.5% a 30d) al menos 7 días',
+        event: 'Primer cruce del drawdown desde el máximo conocido hasta ese día',
+        confirmation: 'Capital 30d negativo o 7 días consecutivos débil dentro de la ventana posterior',
+        falsePositive: 'Confirmación >60 días antes del máximo final que luego recupera un nuevo máximo dentro de 270 días',
+        caveat: 'Tres ciclos son insuficientes para optimizar un umbral. El objetivo es descartar reglas frágiles y encontrar una zona robusta.',
       },
       cycles,
       summary,
@@ -267,7 +361,7 @@ export async function GET() {
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
       sourceStatus: 'error',
-      error: error?.message || 'No fue posible ejecutar el backtest de protección',
+      error: error?.message || 'No fue posible ejecutar el backtest secuencial',
       methodology: null,
       cycles: [],
       summary: [],
