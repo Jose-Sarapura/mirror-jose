@@ -7,6 +7,7 @@ import styles from '../dashboard.module.css';
 
 const RULE_MARKER = 'mirror-v3-btc-health-gate-rule-v1';
 const HISTORY_KEY = 'mirror-v3-btc-health-history-v1';
+const LTH_PENDING_RULE_MARKER = 'mirror-v3-btc-lth-pending-rule-v1';
 
 const DEFINITIONS = {
   mvrv: {
@@ -21,7 +22,7 @@ const DEFINITIONS = {
     role: 'Oferta / convicción',
     timing: 'Anticipación',
     independence: 'Alta',
-    explanation: 'Busca si holders antiguos están activando oferta. Mientras no conectemos cohortes Glassnode exactas, Mirror usa actividad de oferta a 1 año como proxy explícito.',
+    explanation: 'Busca si holders antiguos están activando oferta. Se mantiene como señal relevante de investigación, pero queda fuera del cálculo operativo hasta contar con una fuente válida.',
   },
   capital: {
     name: 'Entrada de capital',
@@ -110,6 +111,26 @@ function seedRule() {
   }
 
   localStorage.setItem(RULE_MARKER, 'seeded');
+
+  if (localStorage.getItem(LTH_PENDING_RULE_MARKER) !== 'seeded') {
+    const refreshed = readDecisionLog(localStorage);
+    if (!refreshed.some((entry) => entry.id === 'btc-lth-pending-rule-v1')) {
+      appendDecisionLog(localStorage, {
+        id: 'btc-lth-pending-rule-v1',
+        date: new Date().toISOString().slice(0, 10),
+        type: 'rule_definition',
+        asset: 'BTC',
+        ruleId: 'btc-lth-data-quality',
+        ruleTitle: 'LTH queda fuera del Health Gate hasta tener una fuente válida',
+        decision: 'Mantener LTH visible como señal pendiente, sin permitir que modifique Mantener / Preparar / Proteger',
+        reason: 'La señal es conceptualmente valiosa, pero hoy no contamos con datos de cohortes suficientemente confiables para automatizarla.',
+        evidence: 'Mirror prioriza calidad de datos sobre falsa precisión.',
+        source: 'btc-health-gate',
+        reviewStatus: 'pending',
+      });
+    }
+    localStorage.setItem(LTH_PENDING_RULE_MARKER, 'seeded');
+  }
 }
 
 function toneClass(signal) {
@@ -190,11 +211,17 @@ export default function BTCHealthGate() {
     [history],
   );
 
-  const signals = Object.entries(DEFINITIONS).map(([key, definition]) => ({
+  const operationalSignals = ['mvrv', 'capital', 'sth'].map((key) => ({
     key,
-    ...definition,
+    ...DEFINITIONS[key],
     ...(data?.signals?.[key] || {}),
   }));
+
+  const pendingLth = {
+    key: 'lth',
+    ...DEFINITIONS.lth,
+    ...(data?.signals?.lth || {}),
+  };
 
   return (
     <section className={styles.btcHealthPanel}>
@@ -203,7 +230,7 @@ export default function BTCHealthGate() {
           <p className={styles.kicker}>BTC Health Gate · V2 dinámico</p>
           <h2>Anticipación + confirmación + persistencia</h2>
           <span className={styles.panelSubtitle}>
-            Mirror actualiza las señales disponibles, registra cambios de estado y distingue dato vivo, proxy y snapshot para evitar falsa precisión.
+            Tres señales operativas alimentan el Health Gate. LTH permanece visible como pendiente, pero no modifica el estado hasta contar con una fuente válida.
           </span>
         </div>
         <span className={styles.reviewBadge}>
@@ -219,7 +246,7 @@ export default function BTCHealthGate() {
       )}
 
       <div className={styles.btcHealthSignalGrid}>
-        {signals.map((signal) => {
+        {operationalSignals.map((signal) => {
           const change = lastChanges[signal.key];
           return (
             <article key={signal.key}>
@@ -243,9 +270,6 @@ export default function BTCHealthGate() {
                 )}
                 {signal.key === 'capital' && (
                   <><span>Realized Cap · 30 días</span><strong>{fmt(signal.change30dPct, 2)}%</strong></>
-                )}
-                {signal.key === 'lth' && (
-                  <><span>Actividad 1 año · Δ30d</span><strong>{fmt(signal.change30dPp, 2)} pp</strong></>
                 )}
                 {signal.key === 'sth' && (
                   <><span>Precio vs. STH cost basis</span><strong>{fmt(signal.distancePct, 1)}%</strong></>
@@ -279,24 +303,36 @@ export default function BTCHealthGate() {
 
       <div className={styles.btcHealthDataQuality}>
         <div>
+          <span>Señales operativas</span>
+          <strong>3</strong>
+          <small>MVRV · capital · STH cost basis</small>
+        </div>
+        <div>
           <span>Datos exactos vivos</span>
-          <strong>{data?.coverage?.exactLive ?? '—'}/4</strong>
+          <strong>{data?.coverage?.exactLive ?? '—'}/3</strong>
           <small>MVRV + entrada de capital</small>
         </div>
         <div>
-          <span>Proxy vivo</span>
-          <strong>{data?.coverage?.proxyLive ?? '—'}/4</strong>
-          <small>LTH hasta conectar cohortes exactas</small>
-        </div>
-        <div>
-          <span>Híbrido / snapshot</span>
-          <strong>{data?.coverage?.snapshot ?? '—'}/4</strong>
+          <span>Híbrido</span>
+          <strong>{data?.coverage?.hybrid ?? '—'}/3</strong>
           <small>STH cost basis con precio vivo</small>
         </div>
         <div>
           <span>Fecha de datos</span>
           <strong>{data?.asOf || '—'}</strong>
           <small>{data?.sourceStatus === 'live' ? 'Actualización diaria pública' : 'Modo respaldo'}</small>
+        </div>
+      </div>
+
+      <div className={styles.btcPendingSignal}>
+        <div>
+          <p className={styles.kicker}>Señal pendiente</p>
+          <h3>Distribución LTH</h3>
+        </div>
+        <div>
+          <span className={styles.neutralPill}>Excluida del cálculo</span>
+          <p>{pendingLth.explanation}</p>
+          <small>{pendingLth.sourceLabel || 'Pendiente de fuente de cohortes válida'}</small>
         </div>
       </div>
 
@@ -307,19 +343,19 @@ export default function BTCHealthGate() {
         </div>
         <div>
           <strong>LTH ↔ entrada de capital</strong>
-          <span>Relacionados, no equivalentes. LTH pregunta quién activa oferta; capital pregunta si existe demanda suficiente para absorberla.</span>
+          <span>Conceptualmente complementarios, pero LTH queda fuera del cálculo hasta tener una fuente válida. No puede subir por sí mismo el estado del Health Gate.</span>
         </div>
       </div>
 
       <div className={styles.btcHealthStages}>
         <article className={data?.gate?.key === 'maintain' ? styles.btcStageActive : ''}>
           <span>🟢 Mantener / vigilancia</span>
-          <strong>0–1 familia deteriorada</strong>
+          <strong>0–1 señal operativa deteriorada</strong>
           <p>Una señal aislada no justifica protección.</p>
         </article>
         <article className={data?.gate?.key === 'prepare' ? styles.btcStageActive : ''}>
           <span>🟡 Preparar protección</span>
-          <strong>≥2 familias tempranas</strong>
+          <strong>≥2 señales operativas</strong>
           <p>Mirror prepara el plan, pero todavía no vende.</p>
         </article>
         <article className={data?.gate?.key === 'evaluate_protection' ? styles.btcStageActive : ''}>
@@ -350,8 +386,8 @@ export default function BTCHealthGate() {
         <div>
           <strong>Calidad de datos antes que falsa precisión</strong>
           <p>
-            MVRV y realized cap se actualizan desde Coin Metrics Community. El bloque LTH usa temporalmente un proxy público de actividad de oferta a 1 año;
-            no lo presentamos como LTH exacto. El STH cost basis mantiene el snapshot de investigación de {data?.signals?.sth?.snapshotDate || '16-09-2026'}
+            MVRV y realized cap se actualizan desde Coin Metrics Community. LTH no participa del cálculo operativo hasta contar con una fuente de cohortes válida.
+            El STH cost basis mantiene el snapshot de investigación de {data?.signals?.sth?.snapshotDate || '16-09-2026'}
             ({moneyUSD(data?.signals?.sth?.valueUSD)}), combinado con precio diario vivo.
           </p>
         </div>
