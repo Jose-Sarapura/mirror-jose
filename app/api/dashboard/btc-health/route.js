@@ -187,7 +187,7 @@ async function fetchCoinMetrics() {
     assets: 'btc',
     metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur',
     frequency: '1d',
-    start_time: daysAgo(125),
+    start_time: daysAgo(760),
     paging_from: 'start',
     page_size: '1000',
     ignore_forbidden_errors: 'true',
@@ -298,6 +298,15 @@ export async function GET() {
     if (!series.length) return NextResponse.json(buildFallback());
 
     const latestPriceRow = latestValidRow(series, 'price');
+    const cyclePeakRow = series.reduce(
+      (best, row) => !best || row.price > best.price ? row : best,
+      null,
+    );
+    const cycleDrawdownPct = (
+      Number.isFinite(latestPriceRow?.price)
+      && Number.isFinite(cyclePeakRow?.price)
+      && cyclePeakRow.price > 0
+    ) ? ((latestPriceRow.price / cyclePeakRow.price) - 1) * 100 : null;
     const latestMvrvRow = latestValidRow(series, 'mvrv', (value) => Number.isFinite(value) && value > 0);
     const latestCapitalRow = latestValidRow(series, 'realizedCap', (value) => Number.isFinite(value) && value > 0);
 
@@ -411,6 +420,12 @@ export async function GET() {
       asOf: latestPriceRow?.time?.slice(0, 10) || latestCapitalRow?.time?.slice(0, 10) || latestMvrvRow?.time?.slice(0, 10),
       sourceStatus: 'live',
       priceUSD: latestPriceRow?.price ?? null,
+      marketPeak: {
+        windowDays: 760,
+        priceUSD: cyclePeakRow?.price ?? null,
+        date: cyclePeakRow?.time?.slice(0, 10) || null,
+        drawdownPct: cycleDrawdownPct,
+      },
       dataDates: {
         price: latestPriceRow?.time?.slice(0, 10) || null,
         mvrv: latestMvrvRow?.time?.slice(0, 10) || null,
