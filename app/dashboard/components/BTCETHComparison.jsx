@@ -31,24 +31,6 @@ function moneyM(value){
   return sign+n.toFixed(1)+' M';
 }
 
-function readDrawdowns(btc,eth){
-  if(typeof window==='undefined') return {btc:null,eth:null};
-  try{
-    const btcStore=JSON.parse(localStorage.getItem('mirror-v3-crypto-high-water-v1')||'{}');
-    const ethStore=JSON.parse(localStorage.getItem('mirror-v3-eth-high-water-v1')||'null');
-
-    const btcPeak=Number(btcStore?.BTC?.peakPriceCLP||0);
-    const ethPeak=Number(ethStore?.peakPriceCLP||0);
-
-    return {
-      btc: btc&&btcPeak>0 ? ((Number(btc.price)/btcPeak)-1)*100 : 0,
-      eth: eth&&ethPeak>0 ? ((Number(eth.price)/ethPeak)-1)*100 : 0,
-    };
-  }catch{
-    return {btc:null,eth:null};
-  }
-}
-
 function btcNext(data){
   const d=data?.diagnostics||{};
   const core=Number(d.confirmedRisks||0);
@@ -74,7 +56,6 @@ function ethNext(data){
 export default function BTCETHComparison({ portfolio }){
   const [btcHealth,setBtcHealth]=useState(null);
   const [ethHealth,setEthHealth]=useState(null);
-  const [drawdowns,setDrawdowns]=useState({btc:null,eth:null});
 
   const btc=(portfolio.cryptoAssets||[]).find(a=>a.ticker==='BTC');
   const eth=(portfolio.cryptoAssets||[]).find(a=>a.ticker==='ETH');
@@ -88,10 +69,9 @@ export default function BTCETHComparison({ portfolio }){
       if(cancelled) return;
       setBtcHealth(btcData);
       setEthHealth(ethData);
-      setDrawdowns(readDrawdowns(btc,eth));
     }).catch(()=>{});
     return ()=>{cancelled=true;};
-  },[btc?.price,eth?.price]);
+  },[]);
 
   const summary=useMemo(()=>({
     btcCore:Number(btcHealth?.diagnostics?.confirmedRisks||0),
@@ -188,7 +168,7 @@ export default function BTCETHComparison({ portfolio }){
           <div className={styles.cryptoDecisionStats}>
             <div><span>Peso Buda</span><strong>{btc?fmt(btc.weightWithinCrypto,1)+'%':'—'}</strong></div>
             <div><span>Resultado</span><strong>{btc?percentage(btc.totalReturnPct):'—'}</strong></div>
-            <div><span>Drawdown</span><strong>{Number.isFinite(drawdowns.btc)?percentage(drawdowns.btc):'—'}</strong></div>
+            <div><span>Drawdown ciclo</span><strong>{Number.isFinite(btcHealth?.marketPeak?.drawdownPct)?percentage(btcHealth.marketPeak.drawdownPct):'—'}</strong><small>Máx. {btcHealth?.marketPeak?.date || '—'}</small></div>
             <div><span>Núcleo confirmado</span><strong>{summary.btcCore}/3</strong></div>
           </div>
           <p className={styles.cryptoNextStep}><b>Siguiente condición:</b> {summary.btcNext}</p>
@@ -202,7 +182,7 @@ export default function BTCETHComparison({ portfolio }){
           <div className={styles.cryptoDecisionStats}>
             <div><span>Peso Buda</span><strong>{eth?fmt(eth.weightWithinCrypto,1)+'%':'—'}</strong></div>
             <div><span>Resultado</span><strong>{eth?percentage(eth.totalReturnPct):'—'}</strong></div>
-            <div><span>Drawdown</span><strong>{Number.isFinite(drawdowns.eth)?percentage(drawdowns.eth):'—'}</strong></div>
+            <div><span>Drawdown ciclo</span><strong>{Number.isFinite(ethHealth?.marketPeak?.drawdownPct)?percentage(ethHealth.marketPeak.drawdownPct):'—'}</strong><small>Máx. {ethHealth?.marketPeak?.date || '—'}</small></div>
             <div><span>Núcleo confirmado</span><strong>{summary.ethCore}/3</strong></div>
           </div>
           <p className={styles.cryptoNextStep}><b>Siguiente condición:</b> {summary.ethNext}</p>
