@@ -1,5 +1,7 @@
 'use client';
 
+// Vercel redeploy trigger · 2026-09-22
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MIRROR_DEFAULTS } from '../lib/mirror-config';
