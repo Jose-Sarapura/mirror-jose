@@ -4223,7 +4223,8 @@
   background: rgba(0,0,0,.12);
 }
 .cryptoDecisionStats span,
-.cryptoDecisionStats strong {
+.cryptoDecisionStats strong,
+.cryptoDecisionStats small {
   display: block;
 }
 .cryptoDecisionStats span {
@@ -4233,6 +4234,11 @@
 .cryptoDecisionStats strong {
   margin-top: 5px;
   font-size: 11px;
+}
+.cryptoDecisionStats small {
+  margin-top: 4px;
+  color: #7f8d9e;
+  font-size: 6px;
 }
 .cryptoNextStep {
   margin: 12px 0 0;
