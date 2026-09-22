@@ -267,6 +267,15 @@ export async function GET() {
     if (!ethRows.length) return NextResponse.json(buildFallback());
 
     const latest = ethRows[ethRows.length - 1];
+    const cyclePeak = ethRows.reduce(
+      (best, row) => !best || row.price > best.price ? row : best,
+      null,
+    );
+    const cycleDrawdownPct = (
+      Number.isFinite(latest?.price)
+      && Number.isFinite(cyclePeak?.price)
+      && cyclePeak.price > 0
+    ) ? ((latest.price / cyclePeak.price) - 1) * 100 : null;
     const mvrvValues = ethRows.map((row) => row.mvrv).filter(Number.isFinite);
     const mvrvPercentile = percentileRank(mvrvValues, latest.mvrv);
     const valuation = classifyValuation(latest.mvrv, mvrvPercentile);
@@ -318,6 +327,12 @@ export async function GET() {
       asOf: latest.date,
       sourceStatus: 'live',
       priceUSD: latest.price,
+      marketPeak: {
+        windowDays: 760,
+        priceUSD: cyclePeak?.price ?? null,
+        date: cyclePeak?.date || null,
+        drawdownPct: cycleDrawdownPct,
+      },
       gate,
       methodology: {
         version: 'ETH V1',
