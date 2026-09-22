@@ -4179,3 +4179,164 @@
   .intelligenceTabs { position: static; grid-template-columns: 1fr; }
   .cryptoCompareGrid { grid-template-columns: 1fr; }
 }
+
+
+/* BTC vs ETH decision dashboard */
+.cryptoDecisionHero {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.cryptoDecisionHero > article {
+  padding: 17px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background:
+    linear-gradient(145deg, rgba(112,167,255,.025), rgba(40,217,167,.015)),
+    rgba(255,255,255,.01);
+}
+.cryptoCompareHead > div > span,
+.cryptoCompareHead > div > strong {
+  display: block;
+}
+.cryptoCompareHead > div > span {
+  color: #9fb3ce;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.cryptoCompareHead > div > strong {
+  margin-top: 6px;
+  font-size: 21px;
+}
+.cryptoDecisionStats {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 8px;
+  margin-top: 15px;
+}
+.cryptoDecisionStats > div {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+}
+.cryptoDecisionStats span,
+.cryptoDecisionStats strong {
+  display: block;
+}
+.cryptoDecisionStats span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.cryptoDecisionStats strong {
+  margin-top: 5px;
+  font-size: 11px;
+}
+.cryptoNextStep {
+  margin: 12px 0 0;
+  padding: 11px 12px;
+  border-left: 2px solid rgba(112,167,255,.4);
+  border-radius: 0 9px 9px 0;
+  background: rgba(112,167,255,.035);
+  color: #98a6b7;
+  font-size: 8px;
+  line-height: 1.55;
+}
+.cryptoNextStep b { color: #cbd8e8; }
+
+.cryptoSignalMatrix {
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.cryptoSignalHead,
+.cryptoSignalRow {
+  display: grid;
+  grid-template-columns: .7fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.cryptoSignalHead {
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.018);
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.cryptoSignalRow {
+  min-height: 64px;
+  border-bottom: 1px solid var(--border);
+}
+.cryptoSignalRow:last-child { border-bottom: 0; }
+.cryptoSignalRow > strong {
+  font-size: 9px;
+}
+.cryptoSignalRow > div {
+  display: grid;
+  grid-template-columns: minmax(0,auto) 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.cryptoSignalRow > div > span {
+  width: max-content;
+  max-width: 100%;
+  font-size: 7px;
+}
+.cryptoSignalRow > div > b {
+  min-width: 0;
+  color: #d7e0ea;
+  font-size: 9px;
+  text-align: right;
+}
+
+.cryptoDecisionRules {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.cryptoDecisionRules article {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255,255,255,.01);
+}
+.cryptoDecisionRules span,
+.cryptoDecisionRules strong,
+.cryptoDecisionRules small { display: block; }
+.cryptoDecisionRules span {
+  color: var(--muted);
+  font-size: 7px;
+}
+.cryptoDecisionRules strong {
+  margin-top: 5px;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.cryptoDecisionRules small {
+  margin-top: 5px;
+  color: #8190a1;
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1050px) {
+  .cryptoDecisionStats,
+  .cryptoDecisionRules { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 820px) {
+  .cryptoDecisionHero { grid-template-columns: 1fr; }
+  .cryptoSignalHead,
+  .cryptoSignalRow { grid-template-columns: .7fr 1fr 1fr; min-width: 720px; }
+  .cryptoSignalMatrix { overflow-x: auto; }
+}
+@media (max-width: 620px) {
+  .cryptoDecisionStats,
+  .cryptoDecisionRules { grid-template-columns: 1fr 1fr; }
+}
