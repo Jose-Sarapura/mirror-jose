@@ -19,9 +19,9 @@ function pct(value) {
 }
 
 function trendClass(state) {
-  if (state === 'confirmed') return styles.trendConfirmed;
-  if (state === 'stabilizing') return styles.trendStabilizing;
-  if (state === 'downtrend') return styles.trendDown;
+  if (state === 'confirmed') return styles.signalReview;
+  if (state === 'stabilizing') return styles.signalNeutral;
+  if (state === 'downtrend') return styles.signalWatch;
   return styles.signalNeutral;
 }
 
@@ -134,33 +134,26 @@ export default function OpportunityRadar() {
                   )}
                 </div>
 
-                <div className={styles.entryTimingBox}>
-                  <div className={styles.entryTimingHead}>
-                    <div>
-                      <span>Timing de entrada</span>
-                      <strong>{candidate.decision.entryPlan?.label || 'Sin plan'}</strong>
-                    </div>
+                <div className={styles.decisionStatusBox}>
+                  <div className={styles.decisionTitleRow}>
+                    <span>Timing de entrada</span>
                     <b>{candidate.trend?.score ?? '—'}/100</b>
                   </div>
-                  <div className={styles.entryPlanRow}>
-                    <span>Tramo</span>
-                    <strong>{candidate.decision.entryPlan?.size || '—'}</strong>
-                  </div>
-                  <p>{candidate.decision.entryPlan?.explanation || candidate.trend?.note}</p>
+                  <strong>{candidate.decision.entryPlan?.label || 'Sin plan'}</strong>
+                  <small>{candidate.decision.entryPlan?.size || '—'}</small>
+                  <small>{candidate.decision.entryPlan?.explanation || candidate.trend?.note}</small>
                 </div>
 
-                <div className={styles.opportunityMetricsFour}>
+                <div className={styles.opportunityMetrics}>
                   <div><span>Precio</span><strong>{Number.isFinite(candidate.price) ? money.format(candidate.price) : '—'}</strong></div>
                   <div><span>Desde máx. 1 año</span><strong>{pct(candidate.drawdownFromHigh)}</strong></div>
                   <div><span>Momentum 3m</span><strong>{pct(candidate.trend?.momentum3mPct)}</strong></div>
-                  <div><span>Vs. media 200d</span><strong>{pct(candidate.trend?.priceVsMa200Pct)}</strong></div>
                 </div>
 
-                <div className={styles.trendDetailGrid}>
-                  <div><span>Momentum 1m</span><strong>{pct(candidate.trend?.momentum1mPct)}</strong></div>
+                <div className={styles.opportunityMetrics}>
+                  <div><span>Vs. media 200d</span><strong>{pct(candidate.trend?.priceVsMa200Pct)}</strong></div>
                   <div><span>Momentum 6m</span><strong>{pct(candidate.trend?.momentum6mPct)}</strong></div>
                   <div><span>Pendiente MA50</span><strong>{pct(candidate.trend?.ma50Slope20dPct)}</strong></div>
-                  <div><span>Mínimo 20d</span><strong>{candidate.trend?.higherLow20 ? 'Mejorando' : 'Sin confirmar'}</strong></div>
                 </div>
 
                 <div className={styles.rangeBar}>
@@ -209,7 +202,7 @@ export default function OpportunityRadar() {
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
             <span>
-              <strong>Regla Mirror:</strong> valoración, fundamentales/calidad, riesgo, encaje y tesis deciden si el activo merece ser comprado. La tendencia NO es un hard gate: define el timing y el tamaño inicial. Tendencia bajista + hard gates superados = oportunidad anticipada con entrada parcial, no descarte automático.
+              <strong>Regla Mirror:</strong> valoración, fundamentales/calidad, riesgo, encaje y tesis deciden si el activo merece ser comprado. La tendencia NO es un hard gate: define timing y tamaño inicial. Tendencia bajista + hard gates superados = oportunidad anticipada con entrada parcial, no descarte automático.
             </span>
           </div>
         </>
