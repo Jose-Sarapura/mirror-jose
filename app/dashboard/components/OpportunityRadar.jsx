@@ -18,6 +18,13 @@ function pct(value) {
   return `${sign}${value.toFixed(1)}%`;
 }
 
+function trendClass(state) {
+  if (state === 'confirmed') return styles.trendConfirmed;
+  if (state === 'stabilizing') return styles.trendStabilizing;
+  if (state === 'downtrend') return styles.trendDown;
+  return styles.signalNeutral;
+}
+
 export default function OpportunityRadar() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -46,9 +53,14 @@ export default function OpportunityRadar() {
 
   const priority = useMemo(() => {
     if (!data?.candidates?.length) return null;
-    return [...data.candidates]
-      .filter((candidate) => Number.isFinite(candidate.drawdownFromHigh))
-      .sort((a, b) => a.drawdownFromHigh - b.drawdownFromHigh)[0] || null;
+    const qualified = data.candidates.filter((candidate) => candidate.decision?.qualified);
+    if (qualified.length) {
+      return [...qualified].sort((a, b) => {
+        if (b.decision.score !== a.decision.score) return b.decision.score - a.decision.score;
+        return (b.trend?.score || 0) - (a.trend?.score || 0);
+      })[0];
+    }
+    return [...data.candidates].sort((a, b) => b.decision.score - a.decision.score)[0] || null;
   }, [data]);
 
   return (
@@ -57,7 +69,9 @@ export default function OpportunityRadar() {
         <div>
           <p className={styles.kicker}>Laboratorio de inversión</p>
           <h2>Motor de oportunidades</h2>
-          <span className={styles.panelSubtitle}><span translate="no" className="notranslate">VST, GRID y CCJ</span> están en observación; ninguno forma parte de la cartera todavía.</span>
+          <span className={styles.panelSubtitle}>
+            <span translate="no" className="notranslate">VST, GRID y CCJ</span> se evalúan en dos capas: calidad de oportunidad y timing de entrada.
+          </span>
         </div>
         <span className={styles.reviewBadge}><Icon name="target" size={15} /> Máx. 3 candidatos</span>
       </div>
@@ -65,19 +79,25 @@ export default function OpportunityRadar() {
       {error && <div className={styles.inlineNotice}>{error}</div>}
 
       {!data ? (
-        <div className={styles.opportunityLoading}>Analizando precios y distancia a máximos...</div>
+        <div className={styles.opportunityLoading}>Analizando calidad, valoración, tendencia y momentum...</div>
       ) : (
         <>
           <div className={styles.opportunitySummary}>
             <div>
-              <span>Mayor alerta de precio hoy</span>
-              <strong>{priority ? <><span translate="no" className="notranslate">{priority.ticker}</span>: {priority.signal.status}</> : 'Sin alertas relevantes'}</strong>
-              <small>{priority?.signal?.note || 'El radar no detecta una condición de precio que requiera revisión.'}</small>
+              <span>Mejor candidato estructural hoy</span>
+              <strong>
+                {priority ? <><span translate="no" className="notranslate">{priority.ticker}</span>: {priority.decision.status}</> : 'Sin candidato calificado'}
+              </strong>
+              <small>
+                {priority
+                  ? `${priority.decision.score}/100 en calidad · timing ${priority.trend?.score ?? '—'}/100 · ${priority.decision.entryPlan?.size || 'sin tramo definido'}`
+                  : 'Ningún activo supera todavía los filtros obligatorios.'}
+              </small>
             </div>
             <div className={styles.cadenceBox}>
-              <span>Frecuencia del sistema</span>
-              <strong>Precio diario</strong>
-              <small>Tesis semanal / por evento · fundamentales trimestrales</small>
+              <span>Regla central</span>
+              <strong>Caída ≠ oportunidad</strong>
+              <small>Primero calidad/valoración; después tendencia y tamaño de entrada.</small>
             </div>
           </div>
 
@@ -89,15 +109,7 @@ export default function OpportunityRadar() {
                     <span className={styles.watchTicker} translate="no">{candidate.ticker}</span>
                     <strong>{candidate.name}</strong>
                   </div>
-                  <span className={
-                    candidate.signal.level === 'review'
-                      ? styles.signalReview
-                      : candidate.signal.level === 'watch'
-                        ? styles.signalWatch
-                        : styles.signalNeutral
-                  }>
-                    {candidate.signal.status}
-                  </span>
+                  <span className={trendClass(candidate.trend?.state)}>{candidate.trend?.status || 'Sin timing'}</span>
                 </div>
 
                 <p className={styles.opportunityRole}>{candidate.role}</p>
@@ -112,7 +124,7 @@ export default function OpportunityRadar() {
                         : styles.decisionStatusBox
                 }>
                   <div className={styles.decisionTitleRow}>
-                    <span>Estado de decisión</span>
+                    <span>Calidad de oportunidad</span>
                     <b>{candidate.decision.score}/100</b>
                   </div>
                   <strong>{candidate.decision.status}</strong>
@@ -122,10 +134,33 @@ export default function OpportunityRadar() {
                   )}
                 </div>
 
-                <div className={styles.opportunityMetrics}>
+                <div className={styles.entryTimingBox}>
+                  <div className={styles.entryTimingHead}>
+                    <div>
+                      <span>Timing de entrada</span>
+                      <strong>{candidate.decision.entryPlan?.label || 'Sin plan'}</strong>
+                    </div>
+                    <b>{candidate.trend?.score ?? '—'}/100</b>
+                  </div>
+                  <div className={styles.entryPlanRow}>
+                    <span>Tramo</span>
+                    <strong>{candidate.decision.entryPlan?.size || '—'}</strong>
+                  </div>
+                  <p>{candidate.decision.entryPlan?.explanation || candidate.trend?.note}</p>
+                </div>
+
+                <div className={styles.opportunityMetricsFour}>
                   <div><span>Precio</span><strong>{Number.isFinite(candidate.price) ? money.format(candidate.price) : '—'}</strong></div>
                   <div><span>Desde máx. 1 año</span><strong>{pct(candidate.drawdownFromHigh)}</strong></div>
-                  <div><span>1 año</span><strong>{pct(candidate.oneYearChangePct)}</strong></div>
+                  <div><span>Momentum 3m</span><strong>{pct(candidate.trend?.momentum3mPct)}</strong></div>
+                  <div><span>Vs. media 200d</span><strong>{pct(candidate.trend?.priceVsMa200Pct)}</strong></div>
+                </div>
+
+                <div className={styles.trendDetailGrid}>
+                  <div><span>Momentum 1m</span><strong>{pct(candidate.trend?.momentum1mPct)}</strong></div>
+                  <div><span>Momentum 6m</span><strong>{pct(candidate.trend?.momentum6mPct)}</strong></div>
+                  <div><span>Pendiente MA50</span><strong>{pct(candidate.trend?.ma50Slope20dPct)}</strong></div>
+                  <div><span>Mínimo 20d</span><strong>{candidate.trend?.higherLow20 ? 'Mejorando' : 'Sin confirmar'}</strong></div>
                 </div>
 
                 <div className={styles.rangeBar}>
@@ -163,8 +198,9 @@ export default function OpportunityRadar() {
                     );
                   })}
                 </div>
+
                 <p className={styles.decisionMethod}>
-                  Datos fundamentales al {new Date(candidate.fundamentalsUpdatedAt).toLocaleDateString('es-CL')} · {candidate.sourceLabel}
+                  Fundamentales al {new Date(candidate.fundamentalsUpdatedAt).toLocaleDateString('es-CL')} · {candidate.sourceLabel}
                 </p>
               </article>
             ))}
@@ -172,7 +208,9 @@ export default function OpportunityRadar() {
 
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
-            <span><strong>Regla Mirror:</strong> valoración 25%, fundamentales/calidad 25%, riesgo 20%, encaje 20% y tesis 10%. Además, cada bloque tiene un hard gate obligatorio: 60 / 70 / 60 / 75 / 75. Un promedio alto nunca compensa un gate crítico fallado.</span>
+            <span>
+              <strong>Regla Mirror:</strong> valoración, fundamentales/calidad, riesgo, encaje y tesis deciden si el activo merece ser comprado. La tendencia NO es un hard gate: define el timing y el tamaño inicial. Tendencia bajista + hard gates superados = oportunidad anticipada con entrada parcial, no descarte automático.
+            </span>
           </div>
         </>
       )}
