@@ -8,6 +8,7 @@ const NAV = [
   { key: 'overview', label: 'Inicio', icon: 'home' },
   { key: 'portfolio', label: 'Portafolio', icon: 'portfolio' },
   { key: 'intelligence', label: 'Inteligencia', icon: 'brain' },
+  { key: 'opportunities', label: 'Oportunidades', icon: 'target' },
   { key: 'projections', label: 'Proyecciones', icon: 'chart' },
   { key: 'settings', label: 'Config.', icon: 'settings' },
 ];
@@ -19,8 +20,8 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
         <Link href="/dashboard" className={styles.brand}>
           <span className={styles.brandMark}>M</span>
           <span>
-            <strong>Mirror</strong>
-            <small>Portfolio Intelligence</small>
+            <strong translate="no" className="notranslate">Mirror</strong>
+            <small translate="no" className="notranslate">Portfolio Intelligence</small>
           </span>
         </Link>
 
@@ -50,7 +51,7 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
       <div className={styles.mainColumn}>
         <header className={styles.header}>
           <div>
-            <p>Mirror Wealth</p>
+            <p translate="no" className="notranslate">Mirror Wealth</p>
             <h1>Hola, José</h1>
           </div>
           <button type="button" className={styles.refreshButton} onClick={onRefresh} disabled={refreshing}>

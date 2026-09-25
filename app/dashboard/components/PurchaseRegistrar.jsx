@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { persistSettings, registerPurchase, removePurchase } from '../lib/settings';
+import { appendDecisionLog, removeDecisionBySource } from '../lib/decision-log';
+import { BIAS_OPTIONS, buildDecisionSnapshot } from '../lib/decision-learning';
 import { clp, nativeMoney, shares as formatShares } from '../lib/format';
 import Icon from './Icon';
 import styles from '../dashboard.module.css';
@@ -20,6 +22,7 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const [date, setDate] = useState(todayInChile);
   const [amount, setAmount] = useState('');
   const [purchasedShares, setPurchasedShares] = useState('');
+  const [bias, setBias] = useState('none');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -56,12 +59,35 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         currency: asset.currency,
       });
       persist(result.settings);
+
+      const reviewDate = new Date(`${date}T12:00:00`);
+      reviewDate.setDate(reviewDate.getDate() + 90);
+      appendDecisionLog(localStorage, {
+        type: 'buy',
+        asset: ticker,
+        date,
+        decision: `Comprar ${ticker}`,
+        reason: `Compra ejecutada desde Mirror. Peso previo ${asset.weight.toFixed(1)}% vs objetivo ${asset.targetWeight}%.`,
+        evidence: `Monto ${nativeMoney(Number(amount), asset.currency)} · ${formatShares(Number(purchasedShares))} participaciones · precio ${nativeMoney(calculatedPrice, asset.currency)}.`,
+        reviewDate: reviewDate.toISOString().slice(0, 10),
+        source: 'purchase',
+        sourceTransactionId: result.transaction.id,
+        bias,
+        snapshot: buildDecisionSnapshot(portfolio, ticker, {
+          purchaseAmount: Number(amount),
+          purchaseShares: Number(purchasedShares),
+          executionPrice: calculatedPrice,
+        }),
+      });
+      window.dispatchEvent(new Event('mirror-decision-log-updated'));
+
       const balance = asset.currency === 'USD' ? result.settings.cashUSD : result.settings.cashCLP;
       setMessage(
         `${ticker} actualizado: ${formatShares(result.settings.assets[ticker].shares)} participaciones · promedio ${nativeMoney(result.settings.assets[ticker].averageCost, asset.currency)} · billetera ${nativeMoney(balance, asset.currency)}.`,
       );
       setAmount('');
       setPurchasedShares('');
+      setBias('none');
     } catch (submitError) {
       setError(submitError.message);
     }
@@ -70,7 +96,9 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
   const handleRemove = (transactionId) => {
     const nextSettings = removePurchase(settings, transactionId);
     persist(nextSettings);
-    setMessage('Compra eliminada, posición recalculada y saldo devuelto a la billetera.');
+    removeDecisionBySource(localStorage, transactionId);
+    window.dispatchEvent(new Event('mirror-decision-log-updated'));
+    setMessage('Compra eliminada, posición recalculada, saldo devuelto a la billetera y registro de decisión asociado eliminado.');
     setError('');
   };
 
@@ -79,8 +107,8 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
       <div className={styles.purchaseRegistrarHeader}>
         <div>
           <p className={styles.kicker}>Registro de movimientos</p>
-          <h3>Comprar desde la billetera</h3>
-          <span>El saldo se descuenta y el activo actualiza participaciones, costo promedio y peso automáticamente.</span>
+          <h3>Registrar compra en Racional</h3>
+          <span>Solo cartera principal Racional. El saldo se descuenta y el activo actualiza participaciones, costo promedio y peso automáticamente.</span>
         </div>
         <span className={styles.walletBadge}>
           <Icon name="portfolio" size={15} /> {asset.currency}: {nativeMoney(wallet.balance, asset.currency)}
@@ -114,6 +142,14 @@ export default function PurchaseRegistrar({ portfolio, settings, setSettings }) 
         <label>
           Participaciones compradas
           <input type="number" min="0" step="0.00000001" placeholder="0.21955002" value={purchasedShares} onChange={(event) => setPurchasedShares(event.target.value)} required />
+        </label>
+        <label>
+          Chequeo conductual
+          <select value={bias} onChange={(event) => setBias(event.target.value)}>
+            {BIAS_OPTIONS.filter((item) => item.value !== 'not_recorded').map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
         </label>
         <div className={styles.purchaseCalculated}>
           <span>Precio / saldo después</span>

@@ -1,8 +1,8 @@
 import { MIRROR_DEFAULTS } from '../../lib/mirror-config';
 
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
 export const STORAGE_KEY = `mirror-v2-settings-v${SETTINGS_VERSION}`;
-export const LEGACY_STORAGE_KEYS = ['mirror-v2-settings-v4', 'mirror-v2-settings-v3'];
+export const LEGACY_STORAGE_KEYS = ['mirror-v2-settings-v5', 'mirror-v2-settings-v4', 'mirror-v2-settings-v3'];
 
 export function createDefaultSettings() {
   return {
@@ -12,6 +12,15 @@ export function createDefaultSettings() {
     cashCLP: MIRROR_DEFAULTS.cashCLP,
     cashUSD: MIRROR_DEFAULTS.cashUSD,
     transactions: [],
+    crypto: Object.fromEntries(
+      Object.values(MIRROR_DEFAULTS.crypto || {}).map((asset) => [
+        asset.ticker,
+        {
+          shares: asset.shares,
+          averageCost: asset.averageCost,
+        },
+      ]),
+    ),
     assets: Object.fromEntries(
       Object.values(MIRROR_DEFAULTS.assets).map((asset) => [
         asset.ticker,
@@ -36,6 +45,10 @@ export function mergeStoredSettings(stored) {
     cashCLP: numberOr(stored.cashCLP, defaults.cashCLP),
     cashUSD: numberOr(stored.cashUSD, defaults.cashUSD),
     transactions: Array.isArray(stored.transactions) ? stored.transactions : [],
+    crypto: {
+      ...defaults.crypto,
+      ...(stored.crypto || {}),
+    },
     assets: {
       ...defaults.assets,
       ...(stored.assets || {}),
@@ -53,8 +66,8 @@ export function readStoredSettings(storage) {
       if (!raw) continue;
       const merged = mergeStoredSettings(JSON.parse(raw));
 
-      // Migración v5: conserva compras, costos, participaciones y billeteras,
-      // pero corrige la asignación estratégica definitiva 60/20/5/15.
+      // Migración v6: conserva Racional y agrega el bloque Buda (BTC + ETH)
+      // sin alterar la asignación estratégica 60/20/5/15 de la cartera principal.
       if (key !== STORAGE_KEY) {
         merged.assets = {
           ...merged.assets,

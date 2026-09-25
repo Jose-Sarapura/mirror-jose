@@ -1,0 +1,538 @@
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+const COIN_METRICS = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
+const STH_SNAPSHOT = {
+  valueUSD: 71300,
+  asOf: '2026-09-16',
+  source: 'Glassnode research snapshot',
+};
+const TRUE_MARKET_MEAN_SNAPSHOT = {
+  valueUSD: 76700,
+  asOf: '2026-09-16',
+  source: 'Glassnode research snapshot',
+};
+const ETF_MONITOR_URL = 'https://axeladlerjr.com/charts/bitcoin-etf-flow-monitor/';
+
+function daysAgo(days) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function num(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function pctChange(current, previous) {
+  if (!(Number.isFinite(current) && Number.isFinite(previous)) || previous === 0) return null;
+  return ((current / previous) - 1) * 100;
+}
+
+function diffDays(a, b) {
+  const one = new Date(a).getTime();
+  const two = new Date(b).getTime();
+  if (!Number.isFinite(one) || !Number.isFinite(two)) return null;
+  return Math.max(1, Math.floor((two - one) / 86400000) + 1);
+}
+
+function classifyMvrv(value) {
+  if (!Number.isFinite(value) || value <= 0) return { status: 'Sin dato', tone: 'neutral', risk: false, watch: false };
+  if (value >= 3.0) return { status: 'Sobrecalentado', tone: 'danger', risk: true, watch: true };
+  if (value >= 2.4) return { status: 'Elevado', tone: 'watch', risk: false, watch: true };
+  if (value < 1) return { status: 'Bajo costo agregado', tone: 'good', risk: false, watch: false };
+  return { status: 'No extremo', tone: 'good', risk: false, watch: false };
+}
+
+function classifyCapital(change30d) {
+  if (!Number.isFinite(change30d)) return { status: 'Sin dato', tone: 'neutral', risk: false, watch: false };
+  if (change30d < 0) return { status: 'Contracción', tone: 'danger', risk: true, watch: true };
+  if (change30d < 0.5) return { status: 'Expansión débil', tone: 'watch', risk: false, watch: true };
+  return { status: 'Expansión', tone: 'good', risk: false, watch: false };
+}
+
+function classifySth(price, basis) {
+  if (!(Number.isFinite(price) && Number.isFinite(basis))) {
+    return { status: 'Sin dato', tone: 'neutral', risk: false, distancePct: null };
+  }
+  const distancePct = ((price / basis) - 1) * 100;
+  if (distancePct < 0) return { status: 'Bajo cost basis', tone: 'danger', risk: true, distancePct };
+  if (distancePct < 5) return { status: 'Zona sensible', tone: 'watch', risk: true, distancePct };
+  return { status: 'Sobre cost basis', tone: 'good', risk: false, distancePct };
+}
+
+function stripHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function moneyToMillions(raw) {
+  const text = String(raw || '').replace(/,/g, '').trim();
+  const match = text.match(/^([+-]?\$?)(-?\d+(?:\.\d+)?)\s*([KMB])?$/i);
+  if (!match) return null;
+  let value = Number(match[2]);
+  if (!Number.isFinite(value)) return null;
+  const unit = (match[3] || 'M').toUpperCase();
+  if (unit === 'B') value *= 1000;
+  if (unit === 'K') value /= 1000;
+  return value;
+}
+
+function extractAfter(text, label, pattern) {
+  const index = text.indexOf(label);
+  if (index < 0) return null;
+  const slice = text.slice(index + label.length, index + label.length + 220);
+  return slice.match(pattern)?.[1] || null;
+}
+
+async function fetchEtfConfirmation() {
+  try {
+    const response = await fetch(ETF_MONITOR_URL, {
+      headers: { 'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0' },
+      next: { revalidate: 3600 },
+    });
+    if (!response.ok) return null;
+
+    const text = stripHtml(await response.text());
+    const asOf = text.match(/Data as of\s+(\d{4}-\d{2}-\d{2})/i)?.[1] || null;
+    const dailyRaw = extractAfter(text, 'Last Day Netflow', /([+-]?\$?[\d,.]+\s*[KMB])/i);
+    const weekRaw = extractAfter(text, 'Last Week Netflow', /([+-]?\$?[\d,.]+\s*[KMB])/i);
+    const basisDistance = text.match(/ETF Realized Price\s+\$[\d,]+\s+([+-]?\d+(?:\.\d+)?)%/i)?.[1];
+    const realizedRaw = extractAfter(text, 'ETF Realized Price', /(\$[\d,]+)/i);
+
+    const dailyFlowUSDm = moneyToMillions(dailyRaw);
+    const weeklyFlowUSDm = moneyToMillions(weekRaw);
+    const btcVsEtfBasisPct = basisDistance !== undefined ? Number(basisDistance) : null;
+    const etfRealizedPriceUSD = realizedRaw ? Number(realizedRaw.replace(/[$,]/g, '')) : null;
+
+    if (!Number.isFinite(weeklyFlowUSDm) || !Number.isFinite(btcVsEtfBasisPct)) return null;
+
+    return { asOf, dailyFlowUSDm, weeklyFlowUSDm, btcVsEtfBasisPct, etfRealizedPriceUSD };
+  } catch {
+    return null;
+  }
+}
+
+function classifyEtf(etf) {
+  if (!etf) {
+    return {
+      status: 'Sin dato vivo',
+      tone: 'neutral',
+      risk: false,
+      watch: false,
+      confirmed: false,
+    };
+  }
+
+  const weeklyNegative = etf.weeklyFlowUSDm < 0;
+  const belowBasis = etf.btcVsEtfBasisPct < 0;
+
+  if (weeklyNegative && belowBasis) {
+    return {
+      status: 'Demanda débil confirmada',
+      tone: 'danger',
+      risk: true,
+      watch: true,
+      confirmed: true,
+    };
+  }
+
+  if (weeklyNegative || belowBasis) {
+    return {
+      status: 'Debilidad parcial',
+      tone: 'watch',
+      risk: false,
+      watch: true,
+      confirmed: false,
+    };
+  }
+
+  return {
+    status: 'Demanda favorable',
+    tone: 'good',
+    risk: false,
+    watch: false,
+    confirmed: false,
+  };
+}
+
+function persistence(series, classifier, currentStatus) {
+  if (!series.length || !currentStatus) return { days: null, since: null };
+  let since = series[series.length - 1]?.time?.slice(0, 10) || null;
+
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const state = classifier(series[i]);
+    if (state !== currentStatus) break;
+    since = series[i]?.time?.slice(0, 10) || since;
+  }
+
+  const latest = series[series.length - 1]?.time?.slice(0, 10);
+  return {
+    since,
+    days: since && latest ? diffDays(since, latest) : null,
+  };
+}
+
+async function fetchCoinMetrics() {
+  const params = new URLSearchParams({
+    assets: 'btc',
+    metrics: 'PriceUSD,CapMrktCurUSD,CapMVRVCur',
+    frequency: '1d',
+    start_time: daysAgo(760),
+    paging_from: 'start',
+    page_size: '1000',
+    ignore_forbidden_errors: 'true',
+    ignore_unsupported_errors: 'true',
+  });
+
+  const response = await fetch(`${COIN_METRICS}?${params.toString()}`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0' },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) throw new Error(`Coin Metrics HTTP ${response.status}`);
+  const payload = await response.json();
+  const rows = Array.isArray(payload?.data) ? payload.data : [];
+
+  return rows
+    .map((row) => {
+      const price = num(row.PriceUSD);
+      const marketCap = num(row.CapMrktCurUSD);
+      const mvrv = num(row.CapMVRVCur);
+      const realizedCap = Number.isFinite(marketCap) && Number.isFinite(mvrv) && mvrv !== 0
+        ? marketCap / mvrv
+        : null;
+
+      return {
+        time: row.time,
+        price,
+        marketCap,
+        mvrv,
+        realizedCap,
+      };
+    })
+    .filter((row) => row.time && Number.isFinite(row.price))
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+}
+
+function latestValidRow(series, field, validator = (value) => Number.isFinite(value)) {
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const value = series[i]?.[field];
+    if (validator(value)) return series[i];
+  }
+  return null;
+}
+
+function valueAtOrBeforeDate(series, field, anchorTime, offsetDays) {
+  if (!anchorTime) return null;
+  const target = new Date(anchorTime);
+  target.setUTCDate(target.getUTCDate() - offsetDays);
+  const targetMs = target.getTime();
+
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const rowMs = new Date(series[i]?.time).getTime();
+    const value = series[i]?.[field];
+    if (rowMs <= targetMs && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function buildFallback() {
+  return {
+    updatedAt: new Date().toISOString(),
+    asOf: '2026-09-16',
+    sourceStatus: 'fallback',
+    priceUSD: null,
+    gate: {
+      key: 'watch',
+      label: 'Vigilancia',
+      explanation: 'No fue posible actualizar las métricas públicas. Mirror conserva el último marco de investigación sin emitir una acción nueva.',
+    },
+    signals: {
+      mvrv: { status: 'Sin dato vivo', tone: 'neutral', risk: false, sourceMode: 'fallback' },
+      lth: {
+        status: 'Pendiente de fuente válida',
+        tone: 'neutral',
+        risk: false,
+        sourceMode: 'pending',
+        excludedFromGate: true,
+        sourceLabel: 'Fuera del cálculo hasta contar con datos de cohortes válidos',
+      },
+      capital: { status: 'Sin dato vivo', tone: 'neutral', risk: false, sourceMode: 'fallback' },
+      sth: {
+        status: 'Snapshot de investigación',
+        tone: 'neutral',
+        risk: false,
+        valueUSD: STH_SNAPSHOT.valueUSD,
+        snapshotDate: STH_SNAPSHOT.asOf,
+        sourceMode: 'snapshot',
+      },
+      etf: {
+        status: 'Sin dato vivo',
+        tone: 'neutral',
+        risk: false,
+        watch: false,
+        confirmed: false,
+        sourceMode: 'secondary',
+        excludedAsStandaloneTrigger: true,
+      },
+    },
+  };
+}
+
+export async function GET() {
+  try {
+    const [series, etf] = await Promise.all([
+      fetchCoinMetrics(),
+      fetchEtfConfirmation(),
+    ]);
+    if (!series.length) return NextResponse.json(buildFallback());
+
+    const latestPriceRow = latestValidRow(series, 'price');
+    const cyclePeakRow = series.reduce(
+      (best, row) => !best || row.price > best.price ? row : best,
+      null,
+    );
+    const cycleDrawdownPct = (
+      Number.isFinite(latestPriceRow?.price)
+      && Number.isFinite(cyclePeakRow?.price)
+      && cyclePeakRow.price > 0
+    ) ? ((latestPriceRow.price / cyclePeakRow.price) - 1) * 100 : null;
+    const latestMvrvRow = latestValidRow(series, 'mvrv', (value) => Number.isFinite(value) && value > 0);
+    const latestCapitalRow = latestValidRow(series, 'realizedCap', (value) => Number.isFinite(value) && value > 0);
+
+    const mvrvValue = latestMvrvRow?.mvrv ?? null;
+    const mvrvState = classifyMvrv(mvrvValue);
+
+    const realizedCapValue = latestCapitalRow?.realizedCap ?? null;
+    const realized30 = valueAtOrBeforeDate(series, 'realizedCap', latestCapitalRow?.time, 30);
+    const realized90 = valueAtOrBeforeDate(series, 'realizedCap', latestCapitalRow?.time, 90);
+    const capitalChange30dPct = pctChange(realizedCapValue, realized30);
+    const capitalChange90dPct = pctChange(realizedCapValue, realized90);
+    const capitalState = classifyCapital(capitalChange30dPct);
+
+    const sthState = classifySth(latestPriceRow?.price, STH_SNAPSHOT.valueUSD);
+    const etfState = classifyEtf(etf);
+
+    const mvrvPersistence = persistence(
+      series.filter((row) => Number.isFinite(row.mvrv) && row.mvrv > 0),
+      (row) => classifyMvrv(row.mvrv).status,
+      mvrvState.status,
+    );
+    const validCapitalSeries = series.filter((row) => Number.isFinite(row.realizedCap) && row.realizedCap > 0);
+    const capitalPersistence = persistence(
+      validCapitalSeries.map((row, index) => {
+        const compare = index >= 30 ? validCapitalSeries[index - 30]?.realizedCap : null;
+        return { ...row, capitalChange30dPct: pctChange(row.realizedCap, compare) };
+      }).filter((row) => Number.isFinite(row.capitalChange30dPct)),
+      (row) => classifyCapital(row.capitalChange30dPct).status,
+      capitalState.status,
+    );
+    const sthSeries = series.filter((row) =>
+      Number.isFinite(row.price)
+      && new Date(row.time) >= new Date(`${STH_SNAPSHOT.asOf}T00:00:00Z`)
+    );
+    const sthPersistence = persistence(
+      sthSeries,
+      (row) => classifySth(row.price, STH_SNAPSHOT.valueUSD).status,
+      sthState.status,
+    );
+
+    const capitalRiskDays = capitalState.risk ? (capitalPersistence.days || 0) : 0;
+    const sthRiskDays = sthState.risk ? (sthPersistence.days || 0) : 0;
+
+    // Calibration V1: price crossing a level creates attention; persistence creates confirmation.
+    const capitalConfirmedRisk = capitalState.risk && capitalRiskDays >= 14;
+    const capitalStrongRisk = capitalState.risk && capitalRiskDays >= 21;
+    const sthConfirmedRisk = sthState.risk && sthRiskDays >= 7;
+    const sthStrongRisk = sthState.risk && sthRiskDays >= 14;
+    const mvrvOverheated = mvrvState.risk;
+    const etfConfirmedRisk = etfState.confirmed;
+
+    const warningCount = [
+      mvrvState.watch,
+      capitalState.watch || capitalState.risk,
+      sthState.risk,
+      etfState.watch,
+    ].filter(Boolean).length;
+
+    const confirmedRisks = [
+      mvrvOverheated,
+      capitalConfirmedRisk,
+      sthConfirmedRisk,
+    ].filter(Boolean).length;
+
+    const availability = {
+      mvrv: Number.isFinite(mvrvValue) && mvrvValue > 0,
+      capital: Number.isFinite(capitalChange30dPct),
+      sth: Number.isFinite(sthState.distancePct),
+    };
+    const availableOperational = Object.values(availability).filter(Boolean).length;
+    const missingOperational = Object.entries(availability)
+      .filter(([, available]) => !available)
+      .map(([key]) => key);
+
+    let gate = {
+      key: 'maintain',
+      label: warningCount === 0 ? 'Mantener' : 'Vigilancia',
+      explanation: warningCount === 0
+        ? 'Las tres señales operativas permanecen estructuralmente sanas.'
+        : 'Hay señales de atención, pero todavía no han cumplido la persistencia necesaria para preparar protección.',
+    };
+
+    if (availableOperational < 3) {
+      gate = {
+        key: 'insufficient_data',
+        label: 'Datos incompletos',
+        explanation: `Falta información operativa válida (${missingOperational.join(', ')}). Mirror no emite una lectura de Mantener/Proteger hasta recuperar esos datos.`,
+      };
+    } else if (
+      (capitalStrongRisk && sthStrongRisk)
+      || (mvrvOverheated && capitalConfirmedRisk && sthConfirmedRisk)
+      || (confirmedRisks >= 2 && etfConfirmedRisk)
+    ) {
+      gate = {
+        key: 'evaluate_protection',
+        label: 'Protección a evaluar',
+        explanation: etfConfirmedRisk && confirmedRisks >= 2
+          ? 'Dos señales núcleo están confirmadas y ETF añade deterioro moderno de demanda. Corresponde evaluar protección; no vender automáticamente.'
+          : 'Existe deterioro persistente y confirmado entre demanda y estructura, o una confluencia completa con sobrecalentamiento. Corresponde revisar protección; no vender automáticamente.',
+      };
+    } else if (confirmedRisks >= 2) {
+      gate = {
+        key: 'prepare',
+        label: 'Preparar protección',
+        explanation: 'Dos señales independientes ya superaron sus filtros de persistencia. Mirror prepara el plan, pero todavía no ejecuta una venta.',
+      };
+    }
+
+    return NextResponse.json({
+      updatedAt: new Date().toISOString(),
+      asOf: latestPriceRow?.time?.slice(0, 10) || latestCapitalRow?.time?.slice(0, 10) || latestMvrvRow?.time?.slice(0, 10),
+      sourceStatus: 'live',
+      priceUSD: latestPriceRow?.price ?? null,
+      marketPeak: {
+        windowDays: 760,
+        priceUSD: cyclePeakRow?.price ?? null,
+        date: cyclePeakRow?.time?.slice(0, 10) || null,
+        drawdownPct: cycleDrawdownPct,
+      },
+      dataDates: {
+        price: latestPriceRow?.time?.slice(0, 10) || null,
+        mvrv: latestMvrvRow?.time?.slice(0, 10) || null,
+        capital: latestCapitalRow?.time?.slice(0, 10) || null,
+        sthSnapshot: STH_SNAPSHOT.asOf,
+        etf: etf?.asOf || null,
+      },
+      gate,
+      calibration: {
+        version: 'V1',
+        mvrv: {
+          elevated: 2.4,
+          overheated: 3.0,
+          persistenceRule: 'El tiempo elevado no confirma salida por sí solo',
+        },
+        capital: {
+          riskThreshold30dPct: 0,
+          confirmDays: 14,
+          strongDays: 21,
+        },
+        sth: {
+          confirmDays: 7,
+          strongDays: 14,
+          note: 'Persistencia provisional mientras el cost basis sea snapshot híbrido',
+        },
+        etf: {
+          role: 'Confirmación secundaria solamente',
+          confirmedWhen: 'Flujo semanal negativo Y BTC bajo el ETF realized price',
+          standaloneTrigger: false,
+        },
+        logic: 'Cruce = atención; persistencia núcleo + confluencia = acción a evaluar; ETF solo puede reforzar una señal ya formada',
+      },
+      diagnostics: {
+        warningCount,
+        confirmedRisks,
+        capitalRiskDays,
+        sthRiskDays,
+        capitalConfirmedRisk,
+        capitalStrongRisk,
+        sthConfirmedRisk,
+        sthStrongRisk,
+        mvrvOverheated,
+        etfConfirmedRisk,
+      },
+      coverage: {
+        operationalTotal: 3,
+        availableOperational,
+        exactLive: [availability.mvrv, availability.capital].filter(Boolean).length,
+        hybrid: availability.sth ? 1 : 0,
+        pending: 1,
+        secondary: etf ? 1 : 0,
+        missingOperational,
+      },
+      signals: {
+        mvrv: {
+          ...mvrvState,
+          value: mvrvValue,
+          asOf: latestMvrvRow?.time?.slice(0, 10) || null,
+          sourceMode: 'live',
+          sourceLabel: 'Coin Metrics Community · CapMVRVCur',
+          persistence: mvrvPersistence,
+        },
+        lth: {
+          status: 'Pendiente de fuente válida',
+          tone: 'neutral',
+          risk: false,
+          sourceMode: 'pending',
+          excludedFromGate: true,
+          sourceLabel: 'Fuera del cálculo operativo hasta contar con una fuente de cohortes válida',
+          persistence: { days: null, since: null },
+        },
+        capital: {
+          ...capitalState,
+          realizedCapUSD: realizedCapValue,
+          change30dPct: capitalChange30dPct,
+          change90dPct: capitalChange90dPct,
+          asOf: latestCapitalRow?.time?.slice(0, 10) || null,
+          sourceMode: 'live',
+          sourceLabel: 'Coin Metrics Community · realized cap derivado de Market Cap / MVRV',
+          persistence: capitalPersistence,
+        },
+        sth: {
+          ...sthState,
+          valueUSD: STH_SNAPSHOT.valueUSD,
+          snapshotDate: STH_SNAPSHOT.asOf,
+          trueMarketMeanUSD: TRUE_MARKET_MEAN_SNAPSHOT.valueUSD,
+          distancePct: sthState.distancePct,
+          asOf: latestPriceRow?.time?.slice(0, 10) || null,
+          sourceMode: 'hybrid',
+          sourceLabel: 'Cost basis: snapshot Glassnode · precio: Coin Metrics diario',
+          persistence: sthPersistence,
+        },
+        etf: {
+          ...etfState,
+          dailyFlowUSDm: etf?.dailyFlowUSDm ?? null,
+          weeklyFlowUSDm: etf?.weeklyFlowUSDm ?? null,
+          btcVsEtfBasisPct: etf?.btcVsEtfBasisPct ?? null,
+          etfRealizedPriceUSD: etf?.etfRealizedPriceUSD ?? null,
+          asOf: etf?.asOf || null,
+          sourceMode: etf ? 'secondary_live' : 'unavailable',
+          sourceLabel: 'Axel Adler Jr. · BTC US ETF Flow Monitor',
+          excludedAsStandaloneTrigger: true,
+          persistence: { days: null, since: null },
+        },
+      },
+    });
+  } catch {
+    return NextResponse.json(buildFallback());
+  }
+}
