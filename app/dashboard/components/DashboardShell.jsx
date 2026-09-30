@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from './Icon';
 import PortfolioHealthGate from './PortfolioHealthGate';
+import StrategyConstitution from './StrategyConstitution';
 import { mergePortfolioData } from '../lib/calculations';
 import { readStoredSettings } from '../lib/settings';
 import styles from '../dashboard.module.css';
@@ -90,7 +91,10 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
         <main className={styles.content}>
           {children}
           {active === 'portfolio' && portfolioHealthData && (
-            <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+            <>
+              <StrategyConstitution portfolio={portfolioHealthData} />
+              <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+            </>
           )}
         </main>
       </div>
