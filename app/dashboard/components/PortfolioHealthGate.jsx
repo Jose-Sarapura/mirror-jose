@@ -78,17 +78,19 @@ function timingPlan(asset, health, timing) {
   };
 }
 
-export default function PortfolioHealthGate({ portfolio }) {
+export default function PortfolioHealthGate({ portfolio, context = 'legacy' }) {
   const [timingData, setTimingData] = useState(null);
 
   useEffect(() => {
+    if (context !== 'portfolio') return undefined;
+
     let active = true;
     fetch('/api/dashboard/portfolio-timing', { cache: 'no-store' })
       .then((response) => response.json())
       .then((payload) => { if (active) setTimingData(payload); })
       .catch(() => {});
     return () => { active = false; };
-  }, []);
+  }, [context]);
 
   const timingByTicker = useMemo(() => new Map(
     (timingData?.assets || []).map((item) => [item.ticker, item])
@@ -101,6 +103,8 @@ export default function PortfolioHealthGate({ portfolio }) {
       return { asset, health, timing, plan: health ? timingPlan(asset, health, timing) : null };
     })
     .filter((item) => item.health);
+
+  if (context !== 'portfolio') return null;
 
   return (
     <section className={styles.healthPanel}>
