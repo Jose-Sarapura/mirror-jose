@@ -12,12 +12,6 @@ function statusClass(level) {
   return styles.healthHold;
 }
 
-function timingClass(state) {
-  if (state === 'confirmed') return styles.healthAdd;
-  if (state === 'downtrend') return styles.healthWatch;
-  return styles.healthHold;
-}
-
 function pct(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
@@ -146,24 +140,19 @@ export default function PortfolioHealthGate({ portfolio }) {
               <small>{health.contributionReason}</small>
             </div>
 
-            <div className={styles.healthTimingBox}>
-              <div className={styles.healthTimingTop}>
-                <div>
-                  <span>Timing de nuevos aportes</span>
-                  <strong>{plan?.label || 'Actualizando'}</strong>
-                </div>
-                <span className={timingClass(timing?.trend?.state)}>{timing?.trend?.status || 'Actualizando'}</span>
+            <div className={styles.healthDecision}>
+              <div>
+                <span>Timing de nuevos aportes</span>
+                <strong>{timing?.trend?.status || 'Actualizando'}</strong>
               </div>
-
-              <div className={styles.healthTimingMetrics}>
-                <div><span>Desde máximo 1a</span><strong>{pct(timing?.drawdownFromHigh)}</strong></div>
-                <div><span>Vs. MA200</span><strong>{pct(timing?.trend?.priceVsMa200Pct)}</strong></div>
-                <div><span>Momentum 3m</span><strong>{pct(timing?.trend?.momentum3mPct)}</strong></div>
-                <div><span>Score timing</span><strong>{Number.isFinite(timing?.trend?.score) ? `${timing.trend.score}/100` : '—'}</strong></div>
+              <p><b>{plan?.label || 'Actualizando'}.</b> {plan?.explanation}</p>
+              <div className={styles.healthAllocation}>
+                <span>Desde máx. 1a <strong>{pct(timing?.drawdownFromHigh)}</strong></span>
+                <span>Vs. MA200 <strong>{pct(timing?.trend?.priceVsMa200Pct)}</strong></span>
+                <span>Momentum 3m <strong>{pct(timing?.trend?.momentum3mPct)}</strong></span>
+                <span>Timing <strong>{Number.isFinite(timing?.trend?.score) ? `${timing.trend.score}/100` : '—'}</strong></span>
               </div>
-
-              <p>{plan?.explanation}</p>
-              <small><b>Tamaño:</b> {plan?.size || '—'}</small>
+              <p><b>Tamaño sugerido:</b> {plan?.size || '—'}</p>
             </div>
 
             <div className={styles.healthAllocation}>
