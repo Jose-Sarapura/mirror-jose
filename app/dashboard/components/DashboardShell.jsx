@@ -1,7 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from './Icon';
+import PortfolioHealthGate from './PortfolioHealthGate';
+import { mergePortfolioData } from '../lib/calculations';
+import { readStoredSettings } from '../lib/settings';
 import styles from '../dashboard.module.css';
 
 const NAV = [
@@ -14,6 +18,29 @@ const NAV = [
 ];
 
 export default function DashboardShell({ active, onChange, updatedAt, onRefresh, refreshing, children }) {
+  const [portfolioHealthData, setPortfolioHealthData] = useState(null);
+
+  useEffect(() => {
+    if (active !== 'portfolio') return undefined;
+
+    let alive = true;
+    const loadPortfolioHealth = async () => {
+      try {
+        const response = await fetch('/api/dashboard/portfolio', { cache: 'no-store' });
+        if (!response.ok) return;
+        const apiData = await response.json();
+        const settings = readStoredSettings(localStorage);
+        const merged = mergePortfolioData(apiData, settings);
+        if (alive) setPortfolioHealthData(merged);
+      } catch {
+        // La tabla principal sigue siendo la fuente visible si esta auditoría no actualiza.
+      }
+    };
+
+    loadPortfolioHealth();
+    return () => { alive = false; };
+  }, [active, updatedAt]);
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -60,7 +87,12 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
           </button>
         </header>
 
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          {children}
+          {active === 'portfolio' && portfolioHealthData && (
+            <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+          )}
+        </main>
       </div>
 
       <nav className={styles.mobileNav} aria-label="Navegación móvil">
