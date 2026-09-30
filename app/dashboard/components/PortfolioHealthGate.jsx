@@ -34,6 +34,13 @@ function riskLabel(health) {
   return 'Alto';
 }
 
+function trimPctToTarget(currentWeight, targetWeight) {
+  const current = Number(currentWeight);
+  const target = Number(targetWeight);
+  if (!Number.isFinite(current) || !Number.isFinite(target) || current <= target || current <= 0) return 0;
+  return ((current - target) / current) * 100;
+}
+
 function timingPlan(asset, health, timing) {
   if (!timing || timing.trend?.state === 'unavailable') {
     return {
@@ -98,6 +105,8 @@ function profitReviewFor(asset, health) {
   const excess = asset.weight - asset.targetWeight;
   const triggerWeight = asset.targetWeight + band;
   const profitable = Number(asset.totalReturnPct) > 0;
+  const trimPctNow = trimPctToTarget(asset.weight, asset.targetWeight);
+  const trimPctAtTrigger = trimPctToTarget(triggerWeight, asset.targetWeight);
 
   if (health.failedCritical.length) {
     return {
@@ -105,32 +114,40 @@ function profitReviewFor(asset, health) {
       level: 'review',
       reason: 'Falla un hard gate. Antes de seguir manteniendo, revisar reducción, reemplazo o salida.',
       triggerWeight,
+      trimPctNow,
+      trimPctAtTrigger,
     };
   }
 
   if (profitable && excess >= band) {
     return {
-      label: 'Evaluar toma parcial',
+      label: `Evaluar toma parcial · ~${trimPctNow.toFixed(0)}%`,
       level: 'review',
-      reason: `Está ${excess.toFixed(1)} pp sobre objetivo y con ganancia. Revisar recorte parcial, destino del capital y regla de reentrada.`,
+      reason: `Está ${excess.toFixed(1)} pp sobre objetivo y con ganancia. Un recorte aproximado de ${trimPctNow.toFixed(0)}% de esta posición la devolvería cerca de ${asset.targetWeight}%.`,
       triggerWeight,
+      trimPctNow,
+      trimPctAtTrigger,
     };
   }
 
   if (excess > 0.3) {
     return {
-      label: 'Vigilar ganancia',
+      label: 'Vigilar ganancia · 0% venta ahora',
       level: 'later',
-      reason: `Está sobre objetivo, pero todavía bajo el gatillo de revisión de ${triggerWeight.toFixed(0)}%. No vender solo por la subida.`,
+      reason: `Está sobre objetivo, pero aún bajo el gatillo de ${triggerWeight.toFixed(0)}%. Si llega allí con tesis sana pero peor relación riesgo/valoración, el recorte orientativo para volver al objetivo sería ~${trimPctAtTrigger.toFixed(0)}% de la posición.`,
       triggerWeight,
+      trimPctNow,
+      trimPctAtTrigger,
     };
   }
 
   return {
-    label: 'Sin cosecha activa',
+    label: 'Sin cosecha activa · 0% venta',
     level: 'hold',
-    reason: `Mantener mientras la tesis siga intacta. Si alcanza ${triggerWeight.toFixed(0)}% con ganancia y empeora la relación riesgo/valoración, revisar toma parcial.`,
+    reason: `Mantener. Si alcanza ${triggerWeight.toFixed(0)}% con ganancia y empeora la relación riesgo/valoración, Mirror preparará un recorte orientativo de ~${trimPctAtTrigger.toFixed(0)}% de la posición para volver al objetivo.`,
     triggerWeight,
+    trimPctNow,
+    trimPctAtTrigger,
   };
 }
 
@@ -142,18 +159,18 @@ function mainDecision(asset, health, timing, plan, profit) {
       label: 'REEVALUAR',
       level: 'review',
       why: health.holdingReason,
-      action: 'Pausar aportes y decidir si corresponde reducir, reemplazar o mantener bajo observación.',
+      action: 'Pausar aportes. No vender a ciegas: primero definir nuevo objetivo, reemplazo o salida según la tesis.',
       change: 'Solo vuelve a normalidad cuando el hard gate se recupere o la tesis sea redefinida.',
     };
   }
 
-  if (profit.label === 'Evaluar toma parcial') {
+  if (profit.level === 'review') {
     return {
-      label: 'EVALUAR TOMA PARCIAL',
+      label: `EVALUAR TOMA PARCIAL · ~${profit.trimPctNow.toFixed(0)}%`,
       level: 'review',
       why: profit.reason,
-      action: 'No vender automáticamente: calcular cuánto recortar y dónde rotar ese capital antes de ejecutar.',
-      change: 'Si el sobrepeso se corrige o mejora riesgo/valoración, volver a mantener sin recorte.',
+      action: `Evaluar vender aproximadamente ${profit.trimPctNow.toFixed(0)}% de esta posición para volver de ${asset.weight.toFixed(1)}% a cerca de ${asset.targetWeight}%. Ejecutar solo con destino del capital definido.`,
+      change: 'Si el sobrepeso se corrige o mejora riesgo/valoración, volver a mantener sin recorte. Si la tesis se deteriora, reevaluar un objetivo menor o reemplazo.',
     };
   }
 
@@ -170,16 +187,16 @@ function mainDecision(asset, health, timing, plan, profit) {
 
   if (asset.weight > asset.targetWeight + 0.3 || (asset.ticker === 'SMH' && asset.weight >= 19.5)) {
     return {
-      label: 'PAUSAR APORTES',
+      label: 'PAUSAR APORTES · 0% VENTA',
       level: 'later',
       why: `Está en ${asset.weight.toFixed(1)}% frente a un objetivo de ${asset.targetWeight}%.`,
-      action: 'Mantener la posición y dirigir dinero nuevo a activos con brecha.',
+      action: 'Mantener la posición y dirigir dinero nuevo a activos con brecha. No vender solo por estar levemente sobre objetivo.',
       change: profit.reason,
     };
   }
 
   return {
-    label: 'MANTENER',
+    label: 'MANTENER · 0% VENTA',
     level: 'hold',
     why: 'La tesis sigue vigente y el peso está cerca del objetivo.',
     action: 'No vender ni aumentar de forma táctica. Mantener el peso estratégico.',
@@ -224,7 +241,7 @@ export default function PortfolioHealthGate({ portfolio, context = 'legacy' }) {
         <div>
           <p className={styles.kicker}>Plan por activo</p>
           <h2>Qué hacer ahora</h2>
-          <span className={styles.panelSubtitle}>Una decisión principal por activo. El detalle técnico queda disponible solo si quieres profundizar.</span>
+          <span className={styles.panelSubtitle}>Una decisión principal por activo, con porcentaje concreto cuando corresponda proteger ganancias.</span>
         </div>
         <span className={styles.reviewBadge}><Icon name="shield" size={15} /> {decisions.length} activos</span>
       </div>
@@ -317,7 +334,7 @@ export default function PortfolioHealthGate({ portfolio, context = 'legacy' }) {
 
       <div className={styles.radarFooter}>
         <Icon name="info" size={16} />
-        <span><strong>Regla Mirror:</strong> no vender por una subida aislada. Si se toma ganancia, primero se define cuánto, dónde se rota el capital y bajo qué condición se reentra.</span>
+        <span><strong>Regla Mirror:</strong> en VOO, SMH, CFIETFGE y BCH la toma parcial busca volver al peso estratégico, no vender un porcentaje arbitrario. El porcentaje mostrado es orientativo y debe revisarse junto con destino del capital, costos e impuestos antes de ejecutar.</span>
       </div>
     </section>
   );
