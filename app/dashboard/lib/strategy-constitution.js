@@ -1,14 +1,23 @@
 export const STRATEGY_CONSTITUTION = {
-  version: '1.0',
+  version: '1.1',
   adoptedAt: '2026-09-30',
   reviewCadence: 'Mensual + por evento material + al cruzar un hito patrimonial',
   principles: [
     'La estrategia no se mantiene por inercia: activos, porcentajes y riesgos deben volver a justificarse.',
     'Un cambio de precio por sí solo no obliga a vender; una ruptura de tesis o de hard gate sí obliga a reevaluar.',
+    'No se toma ganancia solo porque un activo subió: se revisa cuando hay sobrepeso, valoración/riesgo menos favorables o un destino de capital claramente mejor.',
+    'Toda toma de ganancia parcial debe definir antes el destino del capital: otro activo del portafolio, una nueva oportunidad o liquidez estratégica.',
+    'Si la tesis del activo sigue vigente después de reducirlo, Mirror debe dejar registrada una condición de reentrada para evitar quedar fuera por miedo.',
     'Los hitos patrimoniales activan una revisión obligatoria de riesgo, concentración y necesidad de activos defensivos.',
     'Cruzar un hito no genera una venta automática: cambia la prioridad entre crecimiento y protección del patrimonio.',
     'BTC y ETH permanecen fuera del 60/20/15/5 y se gestionan con sus motores especializados de riesgo y protección.',
   ],
+  capitalFlow: {
+    sequence: ['Mantener', 'Pausar aportes', 'Tomar ganancia parcial', 'Rotar capital', 'Reentrar'],
+    takeProfitRule: 'Cosechar ganancias solo cuando el beneficio de reducir riesgo o financiar una oportunidad supera el costo de cortar un ganador.',
+    rotationRule: 'No vender sin destino. Toda rotación debe mejorar diversificación, valoración, riesgo o cercanía a la meta patrimonial.',
+    reentryRule: 'Si la tesis sigue intacta, definir de antemano qué recuperación de valoración, peso o estructura permitiría reconstruir la posición.',
+  },
   checkpoints: [
     {
       minCLP: 0,
