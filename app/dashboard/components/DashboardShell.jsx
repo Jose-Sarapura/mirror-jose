@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Icon from './Icon';
 import PortfolioHealthGate from './PortfolioHealthGate';
 import StrategyConstitution from './StrategyConstitution';
+import CryptoDecisionSummary from './CryptoDecisionSummary';
 import { mergePortfolioData } from '../lib/calculations';
 import { readStoredSettings } from '../lib/settings';
 import styles from '../dashboard.module.css';
@@ -22,7 +23,7 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
   const [portfolioHealthData, setPortfolioHealthData] = useState(null);
 
   useEffect(() => {
-    if (active !== 'portfolio') return undefined;
+    if (active !== 'portfolio' && active !== 'intelligence') return undefined;
 
     let alive = true;
     const loadPortfolioHealth = async () => {
@@ -34,7 +35,7 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
         const merged = mergePortfolioData(apiData, settings);
         if (alive) setPortfolioHealthData(merged);
       } catch {
-        // La tabla principal sigue siendo la fuente visible si esta auditoría no actualiza.
+        // La vista principal sigue operativa aunque esta capa no actualice.
       }
     };
 
@@ -89,11 +90,35 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
         </header>
 
         <main className={styles.content}>
-          {children}
-          {active === 'portfolio' && portfolioHealthData && (
+          {active === 'intelligence' ? (
             <>
-              <StrategyConstitution portfolio={portfolioHealthData} />
-              <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+              {portfolioHealthData ? (
+                <>
+                  <CryptoDecisionSummary portfolio={portfolioHealthData} ticker="BTC" />
+                  <CryptoDecisionSummary portfolio={portfolioHealthData} ticker="ETH" />
+                </>
+              ) : (
+                <section className={styles.healthPanel}>
+                  <div className={styles.panelHeader}>
+                    <div><p className={styles.kicker}>Decisiones cripto</p><h2>Actualizando BTC y ETH</h2></div>
+                  </div>
+                </section>
+              )}
+
+              <details className={`${styles.healthPanel} ${styles.healthDetails}`}>
+                <summary>Ver análisis completo · BTC, ETH y comparación</summary>
+                <div>{children}</div>
+              </details>
+            </>
+          ) : (
+            <>
+              {children}
+              {active === 'portfolio' && portfolioHealthData && (
+                <>
+                  <StrategyConstitution portfolio={portfolioHealthData} />
+                  <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+                </>
+              )}
             </>
           )}
         </main>
