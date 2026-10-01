@@ -25,6 +25,13 @@ function trendClass(state) {
   return styles.signalNeutral;
 }
 
+function replacementTarget(candidate) {
+  if (candidate.ticker === 'VST') return 'BCH o, solo con evidencia fuerte, una fracción de SMH';
+  if (candidate.ticker === 'GRID') return 'BCH, si mejora claramente retorno/riesgo y diversificación';
+  if (candidate.ticker === 'CCJ') return 'BCH, con umbral alto por volatilidad y valoración';
+  return 'Uno de los 4 actuales, nunca como agregado automático';
+}
+
 export default function OpportunityRadar() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -63,41 +70,45 @@ export default function OpportunityRadar() {
     return [...data.candidates].sort((a, b) => b.decision.score - a.decision.score)[0] || null;
   }, [data]);
 
+  const hasQualifiedReplacement = Boolean(priority?.decision?.qualified);
+
   return (
     <section className={styles.opportunityPanel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.kicker}>Laboratorio de inversión</p>
-          <h2>Motor de oportunidades</h2>
+          <p className={styles.kicker}>Modo Acumulación · 0–100M</p>
+          <h2>Radar de reemplazo</h2>
           <span className={styles.panelSubtitle}>
-            <span translate="no" className="notranslate">VST, GRID y CCJ</span> se evalúan en dos capas: calidad de oportunidad y timing de entrada.
+            Las oportunidades no se agregan por defecto: deben demostrar que mejoran a uno de los 4 activos actuales.
           </span>
         </div>
-        <span className={styles.reviewBadge}><Icon name="target" size={15} /> Máx. 3 candidatos</span>
+        <span className={styles.reviewBadge}><Icon name="target" size={15} /> Reemplazar antes que agregar</span>
       </div>
 
       {error && <div className={styles.inlineNotice}>{error}</div>}
 
       {!data ? (
-        <div className={styles.opportunityLoading}>Analizando calidad, valoración, tendencia y momentum...</div>
+        <div className={styles.opportunityLoading}>Comparando calidad, valoración, riesgo, encaje y timing...</div>
       ) : (
         <>
           <div className={styles.opportunitySummary}>
             <div>
-              <span>Mejor candidato estructural hoy</span>
+              <span>Decisión de cartera hoy</span>
               <strong>
-                {priority ? <><span translate="no" className="notranslate">{priority.ticker}</span>: {priority.decision.status}</> : 'Sin candidato calificado'}
+                {hasQualifiedReplacement
+                  ? <><span translate="no" className="notranslate">{priority.ticker}</span>: candidato para comparación</>
+                  : 'Mantener los 4 activos actuales'}
               </strong>
               <small>
-                {priority
-                  ? `${priority.decision.score}/100 en calidad · timing ${priority.trend?.score ?? '—'}/100 · ${priority.decision.entryPlan?.size || 'sin tramo definido'}`
-                  : 'Ningún activo supera todavía los filtros obligatorios.'}
+                {hasQualifiedReplacement
+                  ? `${priority.decision.score}/100 en calidad · todavía debe justificar a quién reemplaza y por qué mejora el portafolio completo.`
+                  : 'Ningún candidato justifica hoy ampliar el número de posiciones. La base 60/20/15/5 sigue siendo la referencia.'}
               </small>
             </div>
             <div className={styles.cadenceBox}>
-              <span>Regla central</span>
-              <strong>Caída ≠ oportunidad</strong>
-              <small>Primero calidad/valoración; después tendencia y tamaño de entrada.</small>
+              <span>Pregunta obligatoria</span>
+              <strong>¿Reemplaza a quién?</strong>
+              <small>Si no hay una respuesta clara y una mejora de retorno/riesgo, el activo no entra.</small>
             </div>
           </div>
 
@@ -113,6 +124,15 @@ export default function OpportunityRadar() {
                 </div>
 
                 <p className={styles.opportunityRole}>{candidate.role}</p>
+
+                <div className={styles.decisionStatusBox}>
+                  <div className={styles.decisionTitleRow}>
+                    <span>Reemplazo potencial</span>
+                    <b>4 activos máx.</b>
+                  </div>
+                  <strong>{replacementTarget(candidate)}</strong>
+                  <small>{candidate.fit || 'Debe aportar algo que el portafolio actual no capture suficientemente.'}</small>
+                </div>
 
                 <div className={
                   candidate.decision.level === 'candidate'
@@ -168,7 +188,7 @@ export default function OpportunityRadar() {
                 <div className={styles.opportunityThesis}>
                   <strong>Tesis</strong>
                   <p>{candidate.thesis}</p>
-                  <small>Comparar con: {candidate.compareWith}</small>
+                  <small>Benchmark sectorial: {candidate.compareWith}</small>
                 </div>
 
                 <div className={styles.decisionBlocks}>
@@ -202,7 +222,7 @@ export default function OpportunityRadar() {
           <div className={styles.radarFooter}>
             <Icon name="info" size={16} />
             <span>
-              <strong>Regla Mirror:</strong> valoración, fundamentales/calidad, riesgo, encaje y tesis deciden si el activo merece ser comprado. La tendencia NO es un hard gate: define timing y tamaño inicial. Tendencia bajista + hard gates superados = oportunidad anticipada con entrada parcial, no descarte automático.
+              <strong>Regla Mirror 0–100M:</strong> VOO, SMH, Global y BCH se mantienen mientras sigan justificando su función. Un candidato nuevo solo avanza si mejora claramente el retorno/riesgo esperado, aporta algo distinto, controla la duplicación con VOO/SMH y define qué posición desplaza. La tendencia decide timing y tamaño; nunca compensa una tesis o fundamentales débiles.
             </span>
           </div>
         </>
