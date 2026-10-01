@@ -1,26 +1,56 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from './Icon';
+import PortfolioHealthGate from './PortfolioHealthGate';
+import StrategyConstitution from './StrategyConstitution';
+import CryptoDecisionSummary from './CryptoDecisionSummary';
+import { mergePortfolioData } from '../lib/calculations';
+import { readStoredSettings } from '../lib/settings';
 import styles from '../dashboard.module.css';
 
 const NAV = [
   { key: 'overview', label: 'Inicio', icon: 'home' },
   { key: 'portfolio', label: 'Portafolio', icon: 'portfolio' },
   { key: 'intelligence', label: 'Inteligencia', icon: 'brain' },
+  { key: 'opportunities', label: 'Oportunidades', icon: 'target' },
   { key: 'projections', label: 'Proyecciones', icon: 'chart' },
   { key: 'settings', label: 'Config.', icon: 'settings' },
 ];
 
 export default function DashboardShell({ active, onChange, updatedAt, onRefresh, refreshing, children }) {
+  const [portfolioHealthData, setPortfolioHealthData] = useState(null);
+
+  useEffect(() => {
+    if (active !== 'portfolio' && active !== 'intelligence') return undefined;
+
+    let alive = true;
+    const loadPortfolioHealth = async () => {
+      try {
+        const response = await fetch('/api/dashboard/portfolio', { cache: 'no-store' });
+        if (!response.ok) return;
+        const apiData = await response.json();
+        const settings = readStoredSettings(localStorage);
+        const merged = mergePortfolioData(apiData, settings);
+        if (alive) setPortfolioHealthData(merged);
+      } catch {
+        // La vista principal sigue operativa aunque esta capa no actualice.
+      }
+    };
+
+    loadPortfolioHealth();
+    return () => { alive = false; };
+  }, [active, updatedAt]);
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <Link href="/dashboard" className={styles.brand}>
           <span className={styles.brandMark}>M</span>
           <span>
-            <strong>Mirror</strong>
-            <small>Portfolio Intelligence</small>
+            <strong translate="no" className="notranslate">Mirror</strong>
+            <small translate="no" className="notranslate">Portfolio Intelligence</small>
           </span>
         </Link>
 
@@ -50,7 +80,7 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
       <div className={styles.mainColumn}>
         <header className={styles.header}>
           <div>
-            <p>Mirror Wealth</p>
+            <p translate="no" className="notranslate">Mirror Wealth</p>
             <h1>Hola, José</h1>
           </div>
           <button type="button" className={styles.refreshButton} onClick={onRefresh} disabled={refreshing}>
@@ -59,7 +89,39 @@ export default function DashboardShell({ active, onChange, updatedAt, onRefresh,
           </button>
         </header>
 
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          {active === 'intelligence' ? (
+            <>
+              {portfolioHealthData ? (
+                <>
+                  <CryptoDecisionSummary portfolio={portfolioHealthData} ticker="BTC" />
+                  <CryptoDecisionSummary portfolio={portfolioHealthData} ticker="ETH" />
+                </>
+              ) : (
+                <section className={styles.healthPanel}>
+                  <div className={styles.panelHeader}>
+                    <div><p className={styles.kicker}>Decisiones cripto</p><h2>Actualizando BTC y ETH</h2></div>
+                  </div>
+                </section>
+              )}
+
+              <details className={`${styles.healthPanel} ${styles.healthDetails}`}>
+                <summary>Ver análisis completo · BTC, ETH y comparación</summary>
+                <div>{children}</div>
+              </details>
+            </>
+          ) : (
+            <>
+              {children}
+              {active === 'portfolio' && portfolioHealthData && (
+                <>
+                  <StrategyConstitution portfolio={portfolioHealthData} />
+                  <PortfolioHealthGate portfolio={portfolioHealthData} context="portfolio" />
+                </>
+              )}
+            </>
+          )}
+        </main>
       </div>
 
       <nav className={styles.mobileNav} aria-label="Navegación móvil">
