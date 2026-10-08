@@ -20,7 +20,7 @@ export default function ContributionSimulator({ portfolio, initialAmount = 30000
           <p className={styles.kicker}>Próximo aporte sugerido</p>
           <h2>{recommendation.ticker}</h2>
         </div>
-        <span className={styles.strategyTag}>Estrategia 60 / 20 / 10 / 10</span>
+        <span className={styles.strategyTag}>Estrategia 60 / 20 / 15 / 5</span>
       </div>
 
       <p className={styles.recommendationText}>

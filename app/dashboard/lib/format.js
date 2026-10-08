@@ -1,12 +1,14 @@
 export const clp = new Intl.NumberFormat('es-CL', {
   style: 'currency',
   currency: 'CLP',
+  currencyDisplay: 'code',
   maximumFractionDigits: 0,
 });
 
 export const usd = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
+  currencyDisplay: 'code',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });

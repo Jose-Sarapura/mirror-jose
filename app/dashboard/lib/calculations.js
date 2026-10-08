@@ -56,6 +56,47 @@ export function mergePortfolioData(apiData, settings) {
     };
   });
 
+  const cryptoAssetsRaw = (apiData.cryptoAssets || []).map((marketAsset) => {
+    const override = settings?.crypto?.[marketAsset.ticker] || {};
+    const shares = numberOr(override.shares, marketAsset.shares);
+    const averageCost = numberOr(override.averageCost, marketAsset.averageCost);
+    const valueCLP = shares * marketAsset.price;
+    const previousValueCLP = shares * marketAsset.previousClose;
+    const costBasisCLP = shares * averageCost;
+
+    return {
+      ...marketAsset,
+      ...override,
+      shares,
+      averageCost,
+      valueNative: valueCLP,
+      previousValueNative: previousValueCLP,
+      valueCLP,
+      previousValueCLP,
+      costBasisNative: costBasisCLP,
+      costBasisCLP,
+      totalReturnNative: valueCLP - costBasisCLP,
+      totalReturnPct: costBasisCLP ? ((valueCLP / costBasisCLP) - 1) * 100 : 0,
+      dayChangeNative: valueCLP - previousValueCLP,
+    };
+  });
+
+  const cryptoInvestedCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.valueCLP, 0);
+  const previousCryptoInvestedCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
+  const cryptoCostBasisCLP = cryptoAssetsRaw.reduce((sum, asset) => sum + asset.costBasisCLP, 0);
+  const totalInvestedCLP = investedCLP + cryptoInvestedCLP;
+  const previousTotalInvestedCLP = previousInvestedCLP + previousCryptoInvestedCLP;
+  const totalInvestedCostBasisCLP = investedCostBasisCLP + cryptoCostBasisCLP;
+
+  const cryptoAssets = cryptoAssetsRaw.map((asset) => ({
+    ...asset,
+    weightWithinCrypto: cryptoInvestedCLP ? (asset.valueCLP / cryptoInvestedCLP) * 100 : 0,
+    weightTotalInvested: totalInvestedCLP ? (asset.valueCLP / totalInvestedCLP) * 100 : 0,
+  }));
+
+  const racionalWeightTotalInvested = totalInvestedCLP ? (investedCLP / totalInvestedCLP) * 100 : 0;
+  const budaWeightTotalInvested = totalInvestedCLP ? (cryptoInvestedCLP / totalInvestedCLP) * 100 : 0;
+
   return {
     ...apiData,
     assets: enrichedAssets,
@@ -73,6 +114,21 @@ export function mergePortfolioData(apiData, settings) {
     totalReturnPct: totalCostBasisCLP ? ((totalCLP / totalCostBasisCLP) - 1) * 100 : 0,
     dayChangeCLP: totalCLP - previousTotalCLP,
     dayChangePct: previousTotalCLP ? ((totalCLP / previousTotalCLP) - 1) * 100 : 0,
+    cryptoAssets,
+    cryptoInvestedCLP,
+    previousCryptoInvestedCLP,
+    cryptoCostBasisCLP,
+    cryptoReturnCLP: cryptoInvestedCLP - cryptoCostBasisCLP,
+    cryptoReturnPct: cryptoCostBasisCLP ? ((cryptoInvestedCLP / cryptoCostBasisCLP) - 1) * 100 : 0,
+    totalInvestedCLP,
+    previousTotalInvestedCLP,
+    totalInvestedCostBasisCLP,
+    totalInvestedReturnCLP: totalInvestedCLP - totalInvestedCostBasisCLP,
+    totalInvestedReturnPct: totalInvestedCostBasisCLP ? ((totalInvestedCLP / totalInvestedCostBasisCLP) - 1) * 100 : 0,
+    totalInvestedDayChangeCLP: totalInvestedCLP - previousTotalInvestedCLP,
+    totalInvestedDayChangePct: previousTotalInvestedCLP ? ((totalInvestedCLP / previousTotalInvestedCLP) - 1) * 100 : 0,
+    racionalWeightTotalInvested,
+    budaWeightTotalInvested,
     wallets: {
       USD: { currency: 'USD', balance: cashUSD, valueCLP: cashUSDCLP },
       CLP: { currency: 'CLP', balance: cashCLP, valueCLP: cashCLP },

@@ -39,14 +39,62 @@ async function fetchQuote(symbol, fallbackPrice) {
   }
 }
 
+async function fetchBudaQuote(marketId, fallbackPrice) {
+  try {
+    const url = `https://www.buda.com/api/v2/markets/${marketId}/ticker`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 Mirror-Jose/3.0' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const ticker = (await response.json())?.ticker || {};
+    const price = Number(ticker?.last_price?.[0]);
+    const variation = Number(ticker?.price_variation_24h);
+
+    if (!Number.isFinite(price)) throw new Error('Precio inválido');
+
+    const previousClose = Number.isFinite(variation) && variation > -0.999999
+      ? price / (1 + variation)
+      : price;
+
+    return {
+      price,
+      previousClose,
+      dayChangePct: Number.isFinite(variation) ? variation * 100 : 0,
+      marketState: '24/7',
+      marketTime: null,
+      source: 'buda',
+    };
+  } catch {
+    return {
+      price: fallbackPrice,
+      previousClose: fallbackPrice,
+      dayChangePct: 0,
+      marketState: 'FALLBACK',
+      marketTime: null,
+      source: 'fallback',
+    };
+  }
+}
+
 export async function GET() {
   const defaults = MIRROR_DEFAULTS;
   const configs = Object.values(defaults.assets);
+  const cryptoConfigs = Object.values(defaults.crypto || {});
 
-  const [fxQuote, ...quotes] = await Promise.all([
-    fetchQuote('CLP=X', 948.75),
-    ...configs.map((asset) => fetchQuote(asset.marketSymbol, asset.fallbackPrice)),
+  const [marketBundle, cryptoQuotes] = await Promise.all([
+    Promise.all([
+      fetchQuote('CLP=X', 948.75),
+      ...configs.map((asset) => fetchQuote(asset.marketSymbol, asset.fallbackPrice)),
+    ]),
+    Promise.all(
+      cryptoConfigs.map((asset) => fetchBudaQuote(asset.marketId, asset.fallbackPrice)),
+    ),
   ]);
+
+  const [fxQuote, ...quotes] = marketBundle;
 
   const fx = fxQuote.price;
   const assets = configs.map((asset, index) => {
@@ -72,12 +120,37 @@ export async function GET() {
     };
   });
 
+  const cryptoAssets = cryptoConfigs.map((asset, index) => {
+    const quote = cryptoQuotes[index];
+    const valueCLP = quote.price * asset.shares;
+    const previousValueCLP = quote.previousClose * asset.shares;
+
+    return {
+      ...asset,
+      price: quote.price,
+      previousClose: quote.previousClose,
+      dayChange: quote.price - quote.previousClose,
+      dayChangePct: quote.dayChangePct,
+      valueNative: valueCLP,
+      previousValueNative: previousValueCLP,
+      valueCLP,
+      previousValueCLP,
+      marketState: quote.marketState,
+      marketTime: quote.marketTime,
+      source: quote.source,
+    };
+  });
+
   const cashUSDCLP = defaults.cashUSD * fx;
   const totalCashCLP = defaults.cashCLP + cashUSDCLP;
   const investedCLP = assets.reduce((sum, asset) => sum + asset.valueCLP, 0);
   const previousInvestedCLP = assets.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
   const totalCLP = investedCLP + totalCashCLP;
   const previousTotalCLP = previousInvestedCLP + totalCashCLP;
+  const cryptoInvestedCLP = cryptoAssets.reduce((sum, asset) => sum + asset.valueCLP, 0);
+  const previousCryptoInvestedCLP = cryptoAssets.reduce((sum, asset) => sum + asset.previousValueCLP, 0);
+  const totalInvestedAllPlatformsCLP = investedCLP + cryptoInvestedCLP;
+  const previousTotalInvestedAllPlatformsCLP = previousInvestedCLP + previousCryptoInvestedCLP;
 
   const enrichedAssets = assets.map((asset) => ({
     ...asset,
@@ -102,5 +175,10 @@ export async function GET() {
     goalCLP: defaults.goalCLP,
     monthlyContributionCLP: defaults.monthlyContributionCLP,
     assets: enrichedAssets,
+    cryptoAssets,
+    cryptoInvestedCLP,
+    previousCryptoInvestedCLP,
+    totalInvestedAllPlatformsCLP,
+    previousTotalInvestedAllPlatformsCLP,
   });
 }
