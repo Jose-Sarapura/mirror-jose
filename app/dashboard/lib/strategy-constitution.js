@@ -1,9 +1,13 @@
 export const STRATEGY_CONSTITUTION = {
-  version: '1.4',
-  adoptedAt: '2026-10-01',
+  version: '1.5',
+  adoptedAt: '2026-10-23',
   reviewCadence: 'Mensual + por evento material + al cruzar un hito patrimonial',
   principles: [
     'La estrategia no se mantiene por inercia: activos, porcentajes y riesgos deben volver a justificarse.',
+    'Survival Gate antes de retorno: ningún activo o candidato compensa una fragilidad estructural de balance, solvencia, caja o capacidad de sobrevivir un escenario adverso.',
+    'Forward Return es una señal prospectiva relativa, no una promesa de rentabilidad: combina valoración, calidad y vigencia de tesis para decidir si el capital nuevo sigue teniendo sentido.',
+    'Valuation Trim no vende solo porque el precio subió: una valoración extrema habilita vigilancia o reducción únicamente con ganancia, riesgo menos favorable y destino del capital definido.',
+    'After-Tax Rotation compara mantener versus rotar después de impuestos, spreads, comisiones y beneficio tributario. Una mejora bruta que desaparece después de impuestos no justifica el cambio.',
     'Entre $0 y $50M Mirror opera en Crecimiento Puro: prioriza acumulación, simplicidad y permanencia en mercado, aceptando volatilidad razonable a cambio de mayor crecimiento esperado.',
     'Entre $50M y $100M Mirror opera en Crecimiento Controlado: sigue buscando crecimiento, pero aumenta la vigilancia sobre concentración, valoración, drawdown potencial y necesidad de proteger parte de lo acumulado.',
     'La base 60% VOO / 20% SMH / 15% Global / 5% BCH se mantiene mientras los cuatro activos sigan justificando su rol y aprueben sus hard gates.',
@@ -23,6 +27,12 @@ export const STRATEGY_CONSTITUTION = {
     'Cruzar un hito no genera una venta automática: cambia la prioridad entre crecimiento y protección del patrimonio.',
     'BTC y ETH permanecen fuera del 60/20/15/5 y se gestionan con sus motores especializados de riesgo y protección.',
   ],
+  decisionControls: {
+    survivalGate: 'Primero sobrevivir: balance, solvencia, caja, calidad y resiliencia deben aprobar antes de discutir upside.',
+    forwardReturn: 'Evaluar retorno/riesgo prospectivo desde el precio actual; no usar rentabilidad pasada como sustituto de retorno esperado.',
+    valuationTrim: 'Reducir por valoración solo cuando el precio adelanta demasiado crecimiento y la decisión mejora el portafolio neto de costos e impuestos.',
+    afterTaxRotation: 'Toda rotación debe comparar el patrimonio neto esperado después de impuestos y costos, incluyendo ventajas como Art. 107 cuando correspondan.',
+  },
   accumulationMode: {
     minCLP: 0,
     maxCLP: 100000000,
@@ -56,7 +66,7 @@ export const STRATEGY_CONSTITUTION = {
   },
   capitalFlow: {
     sequence: ['Mantener', 'Vigilar', 'Preparar protección', 'Tomar ganancia parcial', 'Rotar capital', 'Reentrar'],
-    takeProfitRule: 'Cosechar ganancias solo cuando el beneficio de reducir riesgo o financiar una oportunidad supera el costo de cortar un ganador.',
+    takeProfitRule: 'Cosechar ganancias solo cuando el beneficio de reducir riesgo o financiar una oportunidad supera el costo de cortar un ganador, incluyendo impuestos y costos de rotación.'
     sizingRule: 'Racional: recorte orientativo hasta volver al peso objetivo vigente. Cripto: 25% inicial, segundo 25% solo con deterioro persistente y 50% de reserva salvo invalidación estructural.',
     rotationRule: 'No vender sin destino. Durante la fase 0–100M, una oportunidad nueva debe indicar explícitamente qué posición desplaza y por qué mejora el conjunto.',
     reentryRule: 'Si la tesis sigue intacta, definir de antemano qué recuperación de valoración, peso o estructura permitiría reconstruir la posición.',

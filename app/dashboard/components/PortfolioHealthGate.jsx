@@ -119,6 +119,17 @@ function profitReviewFor(asset, health) {
     };
   }
 
+  if (profitable && health.controls?.valuationTrim?.level === 'review' && excess < band) {
+    return {
+      label: 'Valoración extrema · 0% venta automática',
+      level: 'later',
+      reason: 'La valoración habilita revisión, pero Mirror no recorta solo por precio. Exigir destino superior y comprobar el resultado neto después de impuestos y costos.',
+      triggerWeight,
+      trimPctNow,
+      trimPctAtTrigger,
+    };
+  }
+
   if (profitable && excess >= band) {
     return {
       label: `Evaluar toma parcial · ~${trimPctNow.toFixed(0)}%`,
@@ -169,7 +180,7 @@ function mainDecision(asset, health, timing, plan, profit) {
       label: `EVALUAR TOMA PARCIAL · ~${profit.trimPctNow.toFixed(0)}%`,
       level: 'review',
       why: profit.reason,
-      action: `Evaluar vender aproximadamente ${profit.trimPctNow.toFixed(0)}% de esta posición para volver de ${asset.weight.toFixed(1)}% a cerca de ${asset.targetWeight}%. Ejecutar solo con destino del capital definido.`,
+      action: `Evaluar vender aproximadamente ${profit.trimPctNow.toFixed(0)}% de esta posición para volver de ${asset.weight.toFixed(1)}% a cerca de ${asset.targetWeight}%. Ejecutar solo con destino definido y mejora neta después de impuestos y costos.`,
       change: 'Si el sobrepeso se corrige o mejora riesgo/valoración, volver a mantener sin recorte. Si la tesis se deteriora, reevaluar un objetivo menor o reemplazo.',
     };
   }
@@ -299,6 +310,22 @@ export default function PortfolioHealthGate({ portfolio, context = 'legacy' }) {
                   <span>¿Qué me haría reducirlo?</span>
                   <p>{health.reduceIf}</p>
                 </div>
+                <div>
+                  <span>Survival Gate</span>
+                  <p><b>{health.controls?.survival?.status}</b>. {health.controls?.survival?.note}</p>
+                </div>
+                <div>
+                  <span>Forward Return</span>
+                  <p><b>{health.controls?.forwardReturn?.status} · {health.controls?.forwardReturn?.score}/100</b>. {health.controls?.forwardReturn?.note}</p>
+                </div>
+                <div>
+                  <span>Valuation Trim</span>
+                  <p><b>{health.controls?.valuationTrim?.status}</b>. {health.controls?.valuationTrim?.note}</p>
+                </div>
+                <div>
+                  <span>After-Tax Rotation</span>
+                  <p><b>{health.controls?.afterTaxRotation?.status}</b>. {health.controls?.afterTaxRotation?.note}</p>
+                </div>
               </div>
 
               <div className={styles.healthBlocks}>
@@ -334,7 +361,7 @@ export default function PortfolioHealthGate({ portfolio, context = 'legacy' }) {
 
       <div className={styles.radarFooter}>
         <Icon name="info" size={16} />
-        <span><strong>Regla Mirror:</strong> en VOO, SMH, CFIETFGE y BCH la toma parcial busca volver al peso estratégico, no vender un porcentaje arbitrario. El porcentaje mostrado es orientativo y debe revisarse junto con destino del capital, costos e impuestos antes de ejecutar.</span>
+        <span><strong>Regla Mirror:</strong> primero Survival Gate; después retorno esperado desde el precio actual. Una valoración extrema solo habilita revisión y toda reducción o reemplazo debe mejorar el resultado neto después de impuestos y costos. En VOO, SMH, CFIETFGE y BCH la toma parcial sigue buscando volver al peso estratégico, no vender un porcentaje arbitrario.</span>
       </div>
     </section>
   );

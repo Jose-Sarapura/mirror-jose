@@ -3,6 +3,8 @@ export const PORTFOLIO_HEALTH = {
     category: 'Núcleo',
     sourceDate: '2026-09-18',
     sourceLabel: 'Vanguard + S&P Dow Jones + valoración S&P 500',
+    survivalNote: 'Vehículo ampliamente diversificado: el riesgo de supervivencia no depende de una sola empresa. Vigilar concentración de megacaps, calidad agregada de beneficios y estructura del índice.',
+    taxProfile: 'Activo extranjero: la ganancia realizada debe evaluarse bajo el régimen general chileno. Rotar solo si la mejora esperada sobrevive impuestos, spread y costos.',
     scores: {
       valuation: 72,
       fundamentals: 95,
@@ -32,6 +34,8 @@ export const PORTFOLIO_HEALTH = {
     category: 'Acelerador',
     sourceDate: '2026-09-18',
     sourceLabel: 'VanEck SMH + valoración sector semiconductores',
+    survivalNote: 'ETF sectorial, no empresa única. El gate vigila resiliencia del ciclo semiconductor, balances de líderes, CAPEX de IA y concentración en pocas posiciones.',
+    taxProfile: 'Activo extranjero: la ganancia realizada debe evaluarse bajo el régimen general chileno. La rotación debe superar impuestos y costos, no solo mejorar la valoración bruta.',
     scores: {
       valuation: 72,
       fundamentals: 86,
@@ -61,6 +65,8 @@ export const PORTFOLIO_HEALTH = {
     category: 'Diversificador global',
     sourceDate: '2026-09-18',
     sourceLabel: 'Singular Global Equities + FTSE Global All Cap',
+    survivalNote: 'Más de 10.000 compañías reducen fuertemente el riesgo idiosincrático. El gate se centra en estructura del vehículo, tracking, liquidez y continuidad de su función global.',
+    taxProfile: 'Art. 107: desde 2027, el mayor valor elegible puede quedar en 0%. Reemplazarlo exige compensar explícitamente la pérdida de esa eficiencia tributaria además de costos y diversificación.',
     scores: {
       valuation: 67,
       fundamentals: 92,
@@ -90,6 +96,8 @@ export const PORTFOLIO_HEALTH = {
     category: 'Satélite Chile / banco',
     sourceDate: '2026-09-18',
     sourceLabel: 'Banco de Chile Q2 2026 + métricas de mercado',
+    survivalNote: 'Empresa individual: exige vigilancia más estricta de capital, CET1, mora, coberturas, costo de riesgo, liquidez y rentabilidad estructural.',
+    taxProfile: 'ADR/activo extranjero: antes de rotar, evaluar la ganancia realizada bajo el régimen general chileno y los cargos o retenciones aplicables.',
     scores: {
       valuation: 70,
       fundamentals: 91,
@@ -139,6 +147,46 @@ export function portfolioHealthDecision(asset) {
   const gap = asset.targetWeight - asset.weight;
   const valuationAllowsNewMoney = scores.valuation >= gates.valuationForNewMoney;
 
+  const survivalPassed = scores.fundamentals >= gates.fundamentals && scores.risk >= gates.risk;
+  const forwardScore = Math.round(
+    scores.valuation * 0.70 + scores.fundamentals * 0.15 + scores.thesis * 0.15
+  );
+  const forwardStatus = forwardScore >= 75
+    ? 'Favorable'
+    : forwardScore >= 65
+      ? 'Razonable'
+      : forwardScore >= 55
+        ? 'Exigente'
+        : 'Débil';
+  const valuationTrimLevel = scores.valuation < 45 ? 'review' : scores.valuation < 60 ? 'watch' : 'hold';
+  const valuationTrimStatus = valuationTrimLevel === 'review'
+    ? 'Revisar reducción por valoración'
+    : valuationTrimLevel === 'watch'
+      ? 'Vigilar valoración'
+      : 'Sin recorte por valoración';
+
+  const controls = {
+    survival: {
+      status: survivalPassed ? 'APROBADO' : 'FALLA',
+      level: survivalPassed ? 'pass' : 'review',
+      note: config.survivalNote,
+    },
+    forwardReturn: {
+      status: forwardStatus,
+      score: forwardScore,
+      note: 'Señal relativa desde valoración + calidad + tesis. No es una proyección porcentual de rentabilidad.',
+    },
+    valuationTrim: {
+      status: valuationTrimStatus,
+      level: valuationTrimLevel,
+      note: 'La valoración extrema por sí sola no vende: exige ganancia, deterioro del retorno/riesgo y un destino superior del capital.',
+    },
+    afterTaxRotation: {
+      status: asset.ticker === 'CFIETFGE' ? 'Ventaja fiscal relevante' : 'Calcular antes de rotar',
+      note: config.taxProfile,
+    },
+  };
+
   let holdingStatus = 'Mantener';
   let holdingLevel = 'hold';
   let holdingReason = 'La tesis y los hard gates siguen vigentes; el activo merece seguir formando parte de la cartera.';
@@ -187,6 +235,7 @@ export function portfolioHealthDecision(asset) {
     contributionReason,
     failedCritical,
     valuationAllowsNewMoney,
+    controls,
     blocks: [
       { key: 'valuation', label: 'Valoración', score: scores.valuation, gate: gates.valuationForNewMoney, weight: 20, note: 'Influye principalmente en si conviene destinar nuevo dinero hoy.' },
       { key: 'fundamentals', label: asset.ticker === 'CFIETFGE' || asset.ticker === 'VOO' || asset.ticker === 'SMH' ? 'Calidad / fundamentales' : 'Fundamentales', score: scores.fundamentals, gate: gates.fundamentals, weight: 25, note: 'Calidad del activo, resultados, estructura y capacidad de sostener su función.' },
