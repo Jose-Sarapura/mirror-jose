@@ -66,7 +66,7 @@ export const STRATEGY_CONSTITUTION = {
   },
   capitalFlow: {
     sequence: ['Mantener', 'Vigilar', 'Preparar protección', 'Tomar ganancia parcial', 'Rotar capital', 'Reentrar'],
-    takeProfitRule: 'Cosechar ganancias solo cuando el beneficio de reducir riesgo o financiar una oportunidad supera el costo de cortar un ganador, incluyendo impuestos y costos de rotación.'
+    takeProfitRule: 'Cosechar ganancias solo cuando el beneficio de reducir riesgo o financiar una oportunidad supera el costo de cortar un ganador, incluyendo impuestos y costos de rotación.',
     sizingRule: 'Racional: recorte orientativo hasta volver al peso objetivo vigente. Cripto: 25% inicial, segundo 25% solo con deterioro persistente y 50% de reserva salvo invalidación estructural.',
     rotationRule: 'No vender sin destino. Durante la fase 0–100M, una oportunidad nueva debe indicar explícitamente qué posición desplaza y por qué mejora el conjunto.',
     reentryRule: 'Si la tesis sigue intacta, definir de antemano qué recuperación de valoración, peso o estructura permitiría reconstruir la posición.',
